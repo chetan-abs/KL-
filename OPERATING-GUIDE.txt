@@ -1,0 +1,1432 @@
+===============================================================================
+K.L. ELECTRICALS APP - HOW TO USE IT
+Lakhtokia, Guwahati
+Last updated: 31 August 2026
+===============================================================================
+
+This file explains how to run and use the software. It is in two parts.
+
+  PART 1 is for staff. How to sign in and do your daily work.
+  PART 2 is for whoever runs the system. Setup, maintenance, and fixing things.
+
+Read the part that applies to you. Part 3 lists rules the software enforces,
+and Part 4 is an honest list of what is not finished.
+
+If you just want to log in and look around, go straight to section 2.12. It has
+test logins for every job in the business.
+
+
+===============================================================================
+WHAT THIS SOFTWARE IS
+===============================================================================
+
+It is an app for running the sales side of the business. It covers:
+
+  - Staff attendance, with GPS
+  - Customer visits and orders taken in the field
+  - The full path an order takes: approval, picking, checking, billing,
+    dispatch, delivery
+  - Purchases and goods coming in from suppliers
+  - Payments, cheques, and the daily cash close
+  - Salary, advances, leave, and sales incentives
+  - Reports
+  - Sending the accounts across to Tally
+
+It runs on phones, tablets, and normal computers through a web browser. The
+same app adjusts itself to the screen size. On a computer you get a menu down
+the left side. On a phone you get buttons along the bottom.
+
+There are two pieces:
+
+  1. The app itself, which people use.
+  2. The server, which holds all the data. It talks to a MySQL database.
+
+The app is useless without the server. There is no offline mode. If the server
+cannot be reached, the app says so instead of pretending to work.
+
+
+===============================================================================
+PART 1 - FOR STAFF
+===============================================================================
+
+-------------------------------------------------------------------------------
+1.1 SIGNING IN
+-------------------------------------------------------------------------------
+
+Open the app. You will see a login box asking for a username and password.
+
+Your username is your first name in small letters. For example: monu, gaurav,
+ashish, sibu.
+
+Your password is given to you by the owner. It is not written down anywhere in
+the app and nobody can look it up for you.
+
+If you type the wrong password the app just says the login failed. It will not
+tell you whether the username exists or whether it was the password that was
+wrong. This is on purpose, so that a stranger cannot use the login screen to
+find out who works here.
+
+If you get it wrong several times in a row, the app stops accepting attempts
+for a short while. Wait a few minutes and try again.
+
+Forgot your password? Ask Yash. He can set a new one for you.
+
+
+-------------------------------------------------------------------------------
+1.2 THE FIRST TIME YOU SIGN IN
+-------------------------------------------------------------------------------
+
+The first time you sign in, the app will ask you to choose your own password
+before it lets you do anything else.
+
+This happens because the password you were given was chosen by somebody else,
+so more than one person knows it. Until you pick your own, you cannot open any
+other screen. There is no way to skip it and no "remind me later".
+
+You need:
+
+  - The password you just signed in with
+  - A new password of your own, at least 8 characters
+  - The new password typed a second time to confirm it
+
+Simple passwords like "password123" are refused. Pick something only you know.
+
+The same thing happens again if Yash ever resets your password for you. That is
+normal.
+
+If you are on the wrong account, there is a Sign Out button on that screen.
+
+
+-------------------------------------------------------------------------------
+1.3 STARTING YOUR DAY - CHECKING IN
+-------------------------------------------------------------------------------
+
+Everybody checks in once a day.
+
+When you open the app at the start of your shift it will ask you to check in.
+It needs your location, so:
+
+  - Turn on GPS / location on your phone
+  - Allow the app to use your location when it asks
+  - Be outside or near a window if the signal is weak
+
+The app will not let you check in without a real GPS reading. It does not guess
+your location. If it cannot get a fix, it says so. Move somewhere with a better
+signal and try again.
+
+There are two shifts:
+
+  Shift A   starts 10:00 am   ends 6:45 pm
+  Shift B   starts 11:00 am   ends 8:00 pm
+
+You get 10 minutes of grace. Shift A staff checking in after 10:10 am are
+marked late. Shift B after 11:10 am.
+
+If you are more than an hour late, the day counts as absent.
+
+If you check out before 6:00 pm (Shift A) or 7:00 pm (Shift B), it is a half
+day.
+
+During the day:
+
+  Lunch Out    tap when you leave for lunch
+  Lunch In     tap when you come back
+  Check Out    tap at the end of your shift
+
+If you forget to check out, the system closes your shift automatically later
+that night. It will be marked as an automatic checkout so it is clear what
+happened.
+
+While you are checked in and out of the shop, the app quietly records your
+location every few minutes. This stops when you check out. This is for the
+company's delivery and visit records. It does not run on the web version, only
+on a phone.
+
+
+-------------------------------------------------------------------------------
+1.4 IF YOU ARE A SALESMAN (Monu, Prasenjit, Manish)
+-------------------------------------------------------------------------------
+
+Your main screen is called Today. It shows your visits and your figures for the
+day.
+
+TAKING AN ORDER
+
+  1. Tap Take Order.
+  2. Pick the customer. If they are new, tap New Dealer first and add them.
+  3. Add the items and the quantity for each.
+  4. Save.
+
+The price is worked out by the server, not by you. You cannot type a rate. The
+rate depends on what kind of customer they are - a dealer pays a different
+price from a retail customer. This is why the customer type matters so much.
+
+If the app refuses the order and says the customer has no type set, that
+customer has not been classified yet. Tell Yash or Gaurav. Do not guess.
+
+If it says an item is not rate carded, that item has no price set up yet. It
+cannot be sold until Gaurav puts a price on it.
+
+A VISIT THAT PRODUCES NO ORDER
+
+Record it as a no-order visit. Do not create an empty order and cancel it.
+These two things are counted differently in the reports.
+
+ESTIMATES
+
+You can make an estimate (a quote) instead of an order, and turn it into a real
+order later if the customer agrees.
+
+COLLECTIONS
+
+If you collect cash or cheques during the day, use Hand in collections at the
+bottom of your Today screen. Enter what you are carrying before you hand it
+over. Sibu counts it separately and enters what he actually received. The two
+numbers are compared.
+
+Do not skip the declaration. If the counts do not match, the declaration is the
+only proof of what you said you had.
+
+OTHER THINGS ON YOUR SCREEN
+
+  Beat        your planned route of customer visits
+  Estimate    make a quote
+  Scheme      the electrician scheme slabs and running totals
+
+
+-------------------------------------------------------------------------------
+1.5 IF YOU APPROVE ORDERS (Manas)
+-------------------------------------------------------------------------------
+
+Your main screen is Orders. It lists everything waiting for approval.
+
+Tap an order to see the customer, the lines, and the value. Then approve or
+reject it.
+
+Nothing moves until you approve. The picker cannot start, so an order sitting
+here is an order not being packed.
+
+Nobody can approve an order they raised themselves. If you raise one, somebody
+else has to approve it.
+
+
+-------------------------------------------------------------------------------
+1.6 IF YOU PICK (Ashish, Rajesh, Hirak, Ganesh, Prabal)
+-------------------------------------------------------------------------------
+
+Your main screen is Pick. It shows approved orders waiting to be picked.
+
+  1. Tap an order.
+  2. Before you can record anything, the app asks you to confirm you have
+     written the SO number in the godown register. Tick it. This is a paper
+     record the app cannot check for you, so it just makes sure the step is
+     not skipped and records that you said you did it.
+  3. Go through each line and enter how many you actually picked.
+  4. If you cannot find enough stock, enter the smaller number. Do not enter
+     the ordered quantity and sort it out later.
+  5. Hand over when done.
+
+A short pick is fine. The customer gets billed for what was actually picked,
+not what was ordered. That only works if you enter the true number.
+
+
+-------------------------------------------------------------------------------
+1.7 IF YOU CHECK AND DISPATCH (Ajit)
+-------------------------------------------------------------------------------
+
+You have two screens.
+
+VERIFY
+
+Picked orders come to you to be counted. You count every item against what the
+picker said they picked - not against the original order. Enter your count.
+
+If your count is lower than the picker's, that is recorded. This is the whole
+point of the step, so enter what you actually count.
+
+Billing will not happen until you have verified. That is enforced by the
+server, not just hidden in the app.
+
+DISPATCH
+
+Build the delivery sheet. Choose which driver takes which orders. You need the
+staff list for this, which you have.
+
+
+-------------------------------------------------------------------------------
+1.8 IF YOU BILL (Gaurav)
+-------------------------------------------------------------------------------
+
+Your main screen is Invoice.
+
+Verified orders come to you. Make the invoice. The invoice bills the counted
+quantity, so if the pick was short, the bill is short too.
+
+The printed invoice comes out as three copies in one file - Original,
+Duplicate, Triplicate. Print all three together. The Duplicate is the one that
+comes back signed.
+
+The agent's name and commission never appear on the invoice. The customer must
+not see what their agent is paid.
+
+CREDIT NOTES AND RETURNS
+
+The Credit screen handles goods coming back. Record what came back and whether
+it is saleable.
+
+RATES
+
+You are the only person who can change an item's rates. But a change you make
+is a request, not a change. It waits for Yash or Manoj to approve it. Until
+they do, the old rate is still what customers are billed.
+
+
+-------------------------------------------------------------------------------
+1.9 IF YOU DRIVE (Kamal, Siva)
+-------------------------------------------------------------------------------
+
+Your main screen is Route. It shows your stops for the day.
+
+At each stop:
+
+  1. Tap the stop.
+  2. Enter the name of the person who received the goods.
+  3. Take a photo. This is required. You cannot close the stop without it.
+  4. Save.
+
+If the delivery fails, record it as undelivered and pick a reason. It goes back
+on a sheet for another attempt. It does not disappear.
+
+There is no signature to collect. The photo and the name are the proof.
+
+Your Done screen shows what you have already delivered.
+
+
+-------------------------------------------------------------------------------
+1.10 IF YOU BUY (Sonu)
+-------------------------------------------------------------------------------
+
+Your main screen is Purchase.
+
+RECORDING A PURCHASE
+
+Pick the type first, because it changes what is required:
+
+  Local - Bill        a proper GST bill from a local supplier
+  Local - Challan     a challan now, GST bill to follow within 7 days
+  Company Direct      straight from the company
+  Outside - Bill      GST bill from outside Guwahati
+  Outside - Challan   challan from outside, GST bill to follow
+
+For every line you enter two numbers:
+
+  Bill quantity     what the supplier's paper says
+  Actual quantity   what you actually counted
+
+These are separate on purpose. Stock moves on what you counted. If they differ,
+the difference is flagged as a shortage or an excess so somebody chases it. Do
+not copy one into the other.
+
+A photo of the goods received is required.
+
+GOODS IN TRANSIT
+
+Reached from the Purchase screen. This is for goods that have been sent but
+have not arrived yet.
+
+When a bilty (LR) arrives, record it: the LR number, supplier, transporter,
+expected date, and freight. The app works out an expected arrival from how long
+that supplier usually takes.
+
+As the consignment moves, update it:
+
+  In Guwahati        transport says it has arrived in town
+  Received           goods are physically here
+  Short / damaged    something is wrong - you must type what
+
+Anything past its expected date shows as late. The owner is told automatically
+after 2 days, and again after 5.
+
+The same screen shows challan purchases still waiting for their GST bill, with
+how many days are left. When the bill arrives, tap Bill in and enter the
+number.
+
+INTERNAL TRANSFERS
+
+Also from the Purchase screen. For stock moving between the shop and the
+godown. The person sending records what was sent. A different person at the
+other end counts what arrived and enters that number. The sender cannot receive
+their own transfer.
+
+
+-------------------------------------------------------------------------------
+1.11 IF YOU HANDLE CASH (Sibu, Damodar)
+-------------------------------------------------------------------------------
+
+SIBU - END OF DAY
+
+Your main screen is EOD.
+
+Collections handed in today shows what each salesman declared. For each one,
+count the money yourself and enter what you counted. Do not copy their number.
+
+If your count and their declaration disagree, the app records both and marks it
+disputed. It does not pick a side.
+
+Then close the day. Enter the counted cash. If it does not match what the
+system expects, it tells you the difference. Recount before closing, because
+the close is recorded against your name.
+
+CHEQUES
+
+The Cheques screen tracks cheques from receipt to clearing.
+
+DAMODAR - CHEQUE DEPOSIT
+
+You take cheques to the bank and upload a photo of the deposit slip. The photo
+is required.
+
+If a cheque bounces, record it. The system automatically undoes the payment,
+puts the invoice back to unpaid, and cancels any cash discount that was given
+on it.
+
+PAYMENTS
+
+When money comes in, it is applied to the oldest unpaid invoice first. This is
+automatic. You cannot point a payment at a chosen invoice, because that is how
+old debts stay old.
+
+Customers who pay quickly earn a discount:
+
+  Paid within 2 days      2.5 percent
+  Paid within 3-10 days   2 percent
+  Paid within 11-20 days  1 percent
+
+This applies to dealers.
+
+
+-------------------------------------------------------------------------------
+1.12 IF YOU ARE THE OWNER (Yash, Manoj)
+-------------------------------------------------------------------------------
+
+Your main screen is Business. It shows today's figures, where every order is in
+the pipeline, and who owes the most money.
+
+From there you can reach three more screens:
+
+REPORTS
+
+Pick one from the dropdown, set the date range, and read it. Every report can
+be downloaded as an Excel file (CSV) or a PDF.
+
+Nine reports are on this screen:
+
+  Daily Sales             orders and value
+  Outstanding             who owes what, split by how old
+  Salesman Performance    orders and value per salesman
+  Purchase                what came in, billed against actual
+  Stock below minimum     what needs reordering
+  Cheque                  cheques and their status
+  Cash Discount           discounts given
+  Estimate Conversion     how many quotes became orders
+  Stock Count             counted against system, with accuracy
+
+Three more exist on the server but have no screen yet - incentive progress for
+a month, a single party's statement, and the reviewed-orders list. They can be
+fetched by anyone connecting to the API directly.
+
+RATE CHANGES
+
+Gaurav's proposed rate changes wait here. Each one shows every field being
+changed, with the old value and the new one. Approve or reject.
+
+If you reject, type a reason. Gaurav is told what it was.
+
+TALLY SYNC
+
+Shows whether the accounts are reaching Tally. See Part 2 for the details.
+
+YOU ALSO APPROVE
+
+  Salary for the month
+  Advances staff ask for
+  Leave
+  Sales incentives
+  Rate changes
+
+Nobody can approve their own advance or their own leave.
+
+
+-------------------------------------------------------------------------------
+1.13 YOUR PAY - EVERYBODY HAS THIS
+-------------------------------------------------------------------------------
+
+Go to the Profile tab. Under "Your pay" there are three screens.
+
+SALARY
+
+Shows this month: your fixed salary, and everything taken off it.
+
+While the month is still running the figures move, because they are worked out
+from your attendance as it happens. Once the month is finalised the numbers are
+frozen and you can open a printable salary slip.
+
+Deductions are listed one by one with the date and the reason, so you can see
+exactly why the total is less than your fixed salary.
+
+Your daily rate is your salary divided by 26 working days.
+
+ADVANCES AND LEAVE
+
+Two tabs on one screen.
+
+To ask for an advance: enter the amount and how many months to repay it over.
+The screen shows what will come off each month before you send it. It waits for
+Yash or Manoj.
+
+To apply for leave: enter the dates and a reason.
+
+Apply for leave in advance if you can. Approved leave costs you one day's pay.
+Being absent without telling anyone costs two.
+
+INCENTIVE
+
+Shows your progress across twenty product segments. Each one has a target and a
+bar showing how close you are.
+
+How it pays:
+
+  Below 90 percent of target      nothing
+  90 to 99 percent                80 percent of the base incentive
+  100 percent                     the full base incentive
+  101 percent and above           110 percent - this is the maximum
+
+Going far past target does not pay more than 110 percent.
+
+Watch for the line that says "removed - unpaid beyond 60 days". If a customer
+you sold to has not paid after 60 days, that sale is taken off your
+achievement. Collecting the money brings it back. Sometimes chasing a payment
+is worth more to you than chasing a new order.
+
+
+===============================================================================
+PART 2 - FOR THE ADMINISTRATOR
+===============================================================================
+
+-------------------------------------------------------------------------------
+2.1 WHAT YOU NEED
+-------------------------------------------------------------------------------
+
+  - Node.js version 18 or newer
+  - MySQL or MariaDB (XAMPP is what was used in development)
+  - A computer that stays on, for the server
+  - Tally Prime on an office machine, if you want the accounts sync
+
+The app and the server can be on the same machine to start with.
+
+
+-------------------------------------------------------------------------------
+2.2 FIRST TIME SETUP
+-------------------------------------------------------------------------------
+
+THE SHORT WAY - TWO COMMANDS
+
+Start MySQL first (in XAMPP, press Start next to MySQL). Then open a command
+window in the project folder and run:
+
+  npm install
+  npm run dev
+
+That is the whole setup. npm run dev works out what has not been done yet and
+does it: writes backend/.env with a generated JWT_SECRET, creates the database
+and its 72 tables, creates the staff accounts and an administrator, loads the
+items and prices from the two spreadsheets, loads the incentive segments, then
+starts the server and the app together in the one terminal.
+
+It prints the login password when it finishes.
+
+Everything it does is skipped if already done, so npm run dev is also how you
+start work every day afterwards. On a machine that is already set up it prints
+a few ok lines and starts straight away.
+
+If something is missing it stops and names the fix rather than showing an
+error. The commonest one is MySQL not being started.
+
+To do the setting up without starting anything:
+
+  npm run setup
+
+THE LONG WAY - ONE STEP AT A TIME
+
+You do not need this if the short way worked. It is here because it is useful
+to know what the short way is actually doing, and because you may want to do
+one part differently - a different admin username, for instance, or your own
+password instead of the shared development one.
+
+Open a command window in the project folder.
+
+STEP 1 - Install
+
+  npm install
+  cd backend
+  npm install
+
+STEP 2 - Settings
+
+In the backend folder, copy .env.example to .env and edit it. The important
+ones:
+
+  DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+        How to reach your database.
+
+  JWT_SECRET
+        A long random string. This signs the login tokens. Make up something
+        long and random. Do not leave it blank and do not share it.
+
+  PORT
+        The port the server listens on. 5000 by default.
+
+  BUSINESS_TIMEZONE
+        Asia/Kolkata. Leave it.
+
+  CORS_ORIGIN
+        Which web addresses may talk to the server. In .env.example this line
+        is commented out with a # at the front, which means every address is
+        accepted. That is fine on the office network. Before you put this on
+        the internet, remove the # and list your real addresses.
+
+  AUTO_CHECKOUT_TIME
+        When forgotten shifts are closed automatically.
+
+  LOCATION_RETENTION_DAYS
+        How long GPS records are kept.
+
+  TALLY_ENABLED
+        false unless you have set up Tally. See section 2.8.
+
+  GEOCODE_ENABLED
+        false by default. Turning it on sends staff GPS coordinates to an
+        outside company to turn them into street addresses. That is a business
+        decision about staff privacy. Think about it before switching it on.
+
+STEP 3 - Create the database
+
+  cd backend
+  npm run init-db
+
+This creates the database and all the tables. It puts no business data in.
+
+STEP 4 - Create the first admin account
+
+  npm run create-admin -- --id ADMIN001 --name "Your Name" --email you@example.com --password "at-least-8-chars"
+
+STEP 5 - Load the staff accounts
+
+  npm run seed-business
+
+This creates the 22 staff accounts with their shifts and permissions. It prints
+a one-time password for each account.
+
+  *** COPY THOSE PASSWORDS NOW. They are not saved anywhere and cannot be
+  *** recovered. Each person must change theirs the first time they sign in.
+
+STEP 6 - Load the item rates
+
+  npm run import-rates -- --all --dry-run
+  npm run import-rates -- --all
+
+The first command shows what it would do without doing it. The second does it.
+This reads the two spreadsheets. It never writes to them.
+
+STEP 7 - Load the incentive segments
+
+  npm run seed-segments
+
+STEP 8 - Start the server
+
+  npm run dev
+
+Check it is alive:
+
+  curl localhost:5000/health        is the server running
+  curl localhost:5000/health/db     can it reach the database
+
+STEP 9 - Start the app
+
+From the main project folder, in a second command window:
+
+  npm run dev        for phones and tablets, through Expo
+  npm run web        to open it in a web browser
+
+On a phone, install Expo Go and scan the code. The app finds the server
+automatically from the machine that served it.
+
+
+-------------------------------------------------------------------------------
+2.3 EVERYDAY COMMANDS
+-------------------------------------------------------------------------------
+
+All of these are run from the backend folder.
+
+STARTING AND STOPPING
+
+  npm run dev              start the server, restarting when files change
+  npm start                start the server without the restarting
+
+HOUSEKEEPING
+
+  npm run auto-checkout -- --dry-run    show shifts that would be closed
+  npm run auto-checkout                 close them
+  npm run purge-locations -- --dry-run  show old GPS records that would go
+  npm run purge-locations               delete them
+  npm run alerts                        send overdue notifications once
+
+The server already runs auto-checkout and alerts every hour on its own. The
+commands above are for running them by hand.
+
+Purging locations cannot be undone, and those records may matter in a pay
+dispute. Check the dry run first.
+
+CHECKING THE DATA IS CONSISTENT
+
+  npm run recompute -- --dry-run   report any drift in the cached totals
+  npm run recompute                fix it
+
+Run this after anything unusual. Stock levels and customer balances are
+calculated from movement records; this checks the two agree.
+
+ACCOUNTS
+
+  npm run secure-accounts -- --dry-run   who is still on a given password
+  npm run secure-accounts                make them change it
+
+  npm run seed-roles                     create any missing staff accounts
+  npm run seed-business -- --reset       reapply shifts and permissions
+                                         (never touches passwords)
+
+TESTS
+
+  npm run test:all       runs everything - 328 checks
+
+The server must be running for the full set. If something breaks after a
+change, run this first.
+
+
+-------------------------------------------------------------------------------
+2.4 ADDING AND REMOVING STAFF
+-------------------------------------------------------------------------------
+
+ADDING SOMEONE
+
+In the app, go to Profile, then People and access. Add the person, give them a
+username, and type a password for them.
+
+They will have to change that password the first time they sign in. This is
+automatic. Tell them the password verbally or in person - do not message it.
+
+Then tick the boxes for what they are allowed to do.
+
+REMOVING SOMEONE
+
+Do not delete the account. Set it to inactive.
+
+Deleting a user destroys every attendance record and GPS record for that
+person. Setting them inactive stops them signing in immediately and can be
+undone. There is deliberately no bulk delete anywhere in the software.
+
+RESETTING SOMEBODY'S PASSWORD
+
+Edit the user and type a new password. They will be made to change it at their
+next sign-in.
+
+
+-------------------------------------------------------------------------------
+2.5 PERMISSIONS - HOW THEY WORK
+-------------------------------------------------------------------------------
+
+What somebody can do is decided only by the boxes ticked on their account. Job
+titles mean nothing to the software.
+
+Permissions come in two sizes:
+
+  A whole area, like "orders"
+        Lets them see and act on everybody's orders.
+
+  A single action, like "orders.view"
+        Lets them see only their own.
+
+This is how a salesman sees his own order book while a supervisor sees the
+whole branch. Giving somebody the whole area widens what they see, not just
+what they can do. Be careful with it.
+
+The tabs a person sees are worked out from their permissions. Take a permission
+away and the tab goes with it. There is no separate menu to edit.
+
+Two permissions look similar and are not:
+
+  items.rates      can SEE prices. Every salesman needs this to quote.
+  items.pricing    can CHANGE prices. Only Gaurav should have this.
+
+Sonu maintains the item list but deliberately cannot see prices.
+
+
+-------------------------------------------------------------------------------
+2.6 PRICES AND RATES
+-------------------------------------------------------------------------------
+
+An item does not have one price. It has six, one for each kind of customer:
+
+  dealer
+  retail_direct
+  retail_commission
+  electrician_direct
+  builder_direct
+  builder_commission
+
+Which one a customer is billed at comes from their customer type. This is why
+a customer with no type set cannot be sold to at all - the software refuses
+rather than guessing, because guessing wrong can mean selling at dealer price
+by accident.
+
+Prices come from the two spreadsheets. To load a new rate card, replace the
+file and run the import again. The app never writes to those files.
+
+Changing a single price is done in the app by Gaurav, and needs Yash or Manoj
+to approve it.
+
+
+-------------------------------------------------------------------------------
+2.7 SCHEDULED JOBS
+-------------------------------------------------------------------------------
+
+The server does these on its own while it is running:
+
+  Every hour     closes shifts nobody checked out of
+  Every hour     sends alerts for things that are overdue
+
+You should set up Windows Task Scheduler for:
+
+  npm run purge-locations       weekly or monthly, to clear old GPS records
+
+Nothing else needs a scheduled task.
+
+
+-------------------------------------------------------------------------------
+2.8 TALLY
+-------------------------------------------------------------------------------
+
+The software can send invoices, receipts and vouchers to Tally Prime.
+
+IMPORTANT: this has never been tested against a real Tally. It has only been
+tested against a stand-in program. Expect to spend half a day on it the first
+time. Everything below is written and ready, but unproven.
+
+TO SET IT UP
+
+  1. On the machine running Tally, open Tally and press F1, then Advanced
+     Configuration. Set "Act as Server" to Yes, on port 9000.
+  2. In backend/.env, fill in TALLY_HOST, TALLY_PORT, and TALLY_COMPANY.
+     TALLY_COMPANY must match the company name EXACTLY as Tally shows it.
+  3. Fill in the ledger names: TALLY_SALES_LEDGER, TALLY_PURCHASE_LEDGER,
+     TALLY_CASH_LEDGER, TALLY_BANK_LEDGER, and the GST ledgers. These must
+     already exist in Tally.
+  4. Run the check:
+
+       npm run tally -- --doctor
+
+     This runs six checks and tells you exactly what to fix for each failure.
+     Keep fixing and rerunning until everything passes.
+
+  5. Only then set TALLY_ENABLED=true.
+
+RUNNING IT
+
+  npm run tally             send everything waiting, once
+  npm run tally -- --watch  keep running and send continuously
+  npm run tally -- --ping   is Tally reachable
+  npm run tally -- --pull   also fetch customer and item lists from Tally
+
+HOW IT BEHAVES
+
+Documents are queued the moment they happen and sent when Tally is reachable.
+If Tally is closed for the night, nothing is lost. It goes when Tally comes
+back.
+
+Stock levels and customer balances are compared with Tally, never overwritten.
+If they disagree, it is reported as something for a person to look at. This is
+deliberate. Overwriting would mean no figure in the app could be explained from
+its own records afterwards.
+
+WATCH OUT FOR
+
+If a push reports "created nothing, altered nothing, no error", the company
+name is almost certainly wrong. That is what Tally does when it does not
+recognise the company.
+
+Fixing TALLY_COMPANY does not fix documents already queued. The company name is
+stored inside each queued document. Those have to be queued again.
+
+The Tally Sync screen in the app shows all of this without needing the command
+line.
+
+
+-------------------------------------------------------------------------------
+2.9 BEFORE PUTTING THIS ON THE INTERNET
+-------------------------------------------------------------------------------
+
+These are fine on an office network and wrong anywhere else.
+
+  1. RETIRE THE OLD PASSWORDS. Run:
+
+       npm run secure-accounts -- --dry-run
+       npm run secure-accounts
+
+     Older databases have staff accounts sharing one password that was written
+     in the setup files, which means it is not private. This marks them so
+     everybody must choose their own. Warn staff first, or it looks like the
+     app is broken.
+
+  2. Stop using the MySQL root user. Make a limited one:
+
+       CREATE USER 'kl_app'@'localhost' IDENTIFIED BY 'something-long-random';
+       GRANT SELECT, INSERT, UPDATE, DELETE ON kl_electricals.* TO 'kl_app'@'localhost';
+
+  3. Set CORS_ORIGIN to your actual web address. Blank means anyone can
+     connect.
+
+  4. Put it behind HTTPS. Right now the connection is not encrypted.
+
+  5. For the Google Play Store, you need a screen explaining background
+     location tracking before you ask for it. Google requires this.
+
+The server warns you about items 2 and 3 when it starts.
+
+
+-------------------------------------------------------------------------------
+2.10 BACKUPS
+-------------------------------------------------------------------------------
+
+Back up the MySQL database. Everything is in there.
+
+Also back up backend/uploads, which holds delivery photos and deposit slips.
+These are not in the database.
+
+Do this daily. There is no built-in backup - use mysqldump or a scheduled task.
+
+
+-------------------------------------------------------------------------------
+2.11 WHEN SOMETHING GOES WRONG
+-------------------------------------------------------------------------------
+
+NOBODY CAN SIGN IN
+
+Check the server is running:      curl localhost:5000/health
+Check it reaches the database:    curl localhost:5000/health/db
+
+If the second one fails, MySQL is down or the .env settings are wrong.
+
+ONE PERSON CANNOT SIGN IN
+
+Check their account is active. Check they are typing the right username - it is
+their first name in small letters. If they have failed several times, wait a
+few minutes for the lockout to clear.
+
+SOMEBODY IS STUCK ON THE CHANGE PASSWORD SCREEN
+
+That is correct behaviour. They must choose a new password. If they cannot
+remember the one they were given, reset it for them and give them the new one.
+
+A SCREEN IS MISSING FOR SOMEBODY
+
+They do not have the permission. Profile, People and access, tick the box.
+
+THE APP SAYS AN ITEM HAS NO RATE
+
+That item has no price set up. Gaurav must set one. Most of the item list is
+in this state - see Part 4.
+
+THE APP SAYS A CUSTOMER HAS NO TYPE
+
+Somebody must classify that customer as dealer, retail, builder and so on.
+Until then they cannot be sold to.
+
+STOCK NUMBERS LOOK WRONG
+
+  npm run recompute -- --dry-run
+
+This compares the stored totals with the movement records and reports any
+difference. Run without --dry-run to fix.
+
+AFTER CHANGING ANYTHING IN THE CODE
+
+  npm run test:all
+
+If a database change was made:
+
+  npm run migrate
+  npm run rebuild-schema
+  npm run build-init-sql
+  npm run test:schema
+
+
+-------------------------------------------------------------------------------
+2.12 TEST LOGINS - FOR TRYING THE APP OUT
+-------------------------------------------------------------------------------
+
+DEVELOPMENT ONLY. Read the warning at the end of this section before you use
+these anywhere that matters.
+
+On the development database as it stands, all 22 staff accounts share one
+password:
+
+        Kl@2026Staff
+
+So you can sign in as anybody and see the app from their side. The username is
+the person's first name in small letters. Type it into the login box - the
+screen deliberately shows no list of accounts to pick from, because a sign-in
+screen that names valid usernames tells a stranger who works here. This file is
+where that list lives instead.
+
+WHICH ACCOUNT SHOWS YOU WHAT
+
+To test a particular job, sign in as that person. Each one opens on a different
+screen and sees a different set of tabs, because the tabs are worked out from
+what the account is allowed to do.
+
+  Username     Password        What you see
+  ---------    -------------   ------------------------------------------------
+  yash         Kl@2026Staff    Everything. Business dashboard, reports, rate
+                               approvals, Tally console, staff and permissions.
+  manoj        Kl@2026Staff    Same as Yash. The second owner.
+  manas        Kl@2026Staff    The order approval queue.
+  monu         Kl@2026Staff    A salesman's day. Take orders, quotes, beat
+                               plan, hand in collections.
+  prasenjit    Kl@2026Staff    Salesman, interior and builder customers.
+  manish       Kl@2026Staff    Salesman, outside Guwahati.
+  ashish       Kl@2026Staff    The picking list and stock counting.
+  ajit         Kl@2026Staff    Counting picked goods, and the dispatch sheet.
+  gaurav       Kl@2026Staff    Billing, credit notes, and proposing rate
+                               changes.
+  kamal        Kl@2026Staff    A driver's route and delivery screens.
+  siva         Kl@2026Staff    The other driver.
+  sonu         Kl@2026Staff    Purchases, goods in transit, transfers.
+  sibu         Kl@2026Staff    Cash, cheques, end of day, counting handovers.
+  damodar      Kl@2026Staff    Taking cheques to the bank.
+  rajesh       Kl@2026Staff    Picker.
+  hirak        Kl@2026Staff    Picker.
+  ganesh       Kl@2026Staff    Picker.
+  pulen        Kl@2026Staff    Showroom.
+  prabal       Kl@2026Staff    Showroom and picking.
+  sujay        Kl@2026Staff    Godown help.
+  dishal       Kl@2026Staff    Godown help.
+  shankar      Kl@2026Staff    Loading.
+
+The admin account made during setup (ADMIN001, or whatever you called it) has
+the password you chose for it. It is not on this list.
+
+A WHOLE ORDER, END TO END
+
+The quickest way to see the software actually work. Sign in and out as each
+person in turn:
+
+  1. monu       Take an order for a customer who has a type set.
+  2. manas      Approve it.
+  3. ashish     Pick it. Tick the godown register box first.
+  4. ajit       Count what was picked. Enter the numbers.
+  5. gaurav     Make the invoice. Open the PDF - three copies in one file.
+  6. ajit       Put it on a dispatch sheet and give it to Kamal.
+  7. kamal      Deliver it. Enter a name and take a photo.
+  8. sibu       Close the day.
+  9. yash       Look at the Business screen and the Daily Sales report.
+
+Try breaking the rules on purpose. Skip step 4 and see billing refuse. Try to
+approve your own order as monu. Both should stop you. If they do not, something
+is wrong.
+
+TESTING THE FORCED PASSWORD CHANGE
+
+Sign in as yash, go to Profile, then People and access. Create a new person and
+give them a password. Sign out, sign in as them. You should land on the change
+password screen and be unable to leave it until you pick a new password.
+
+RUNNING THE AUTOMATED TESTS
+
+The test suites need to know the password. From the backend folder, with the
+server running:
+
+  npm run test:all
+
+If your accounts use a different password, tell the tests:
+
+  SEED_PASSWORD="your-password" npm run test:all
+
+On Windows Command Prompt:
+
+  set SEED_PASSWORD=your-password
+  npm run test:all
+
+MAKING FRESH TEST ACCOUNTS WITH A PASSWORD YOU CHOOSE
+
+If you want a known password rather than the one above, delete the accounts and
+seed them again with one you pick:
+
+  npm run seed-roles -- --password "YourTest@2026"
+
+This only creates accounts that do not already exist. It never changes the
+password of an account that is already there, on purpose, so that re-running it
+cannot wipe a real person's credentials.
+
+To change one existing person's password, do it in the app: sign in as yash,
+People and access, edit them, type a new password. They will be made to change
+it at their next sign-in, which is also a good thing to test.
+
+*** WARNING - READ THIS ***
+
+The password above is not a secret. It was written into the setup scripts, so
+it is in the project's history, and now it is in this file too.
+
+That is acceptable while this is a test system on your own machine. It is not
+acceptable once real orders and real money are in the database, because that one
+password opens the yash account, which can do everything.
+
+Before you go live:
+
+  1. Run this, which forces all 22 people to choose their own password:
+
+       cd backend
+       npm run secure-accounts
+
+  2. Delete this section from this file, or delete the password column from the
+     table above.
+
+After step 1 the logins in this section stop working, which is the point. If
+you are reading this on a live system and they still work, step 1 was not done.
+
+
+-------------------------------------------------------------------------------
+2.13 SENDING THE PROJECT TO SOMEBODY ELSE
+-------------------------------------------------------------------------------
+
+READ THIS FIRST: THE DATA IS NOT IN THE FOLDER
+
+The project folder holds the program. It does not hold the database.
+
+Your items, customers, orders, staff and attendance all live inside MySQL,
+which keeps them in its own folder somewhere else on the machine (with XAMPP,
+under xampp\mysql\data). Zipping the project folder does not pick any of that
+up.
+
+So whoever you send it to gets working software with an empty database. For
+most purposes that is exactly what you want. If you actually need them to have
+your data as well, see "Sending your data too" at the end of this section.
+
+WHAT TO LEAVE OUT OF THE ZIP
+
+Four things must not go in.
+
+  node_modules        Two of these, one at the top and one in backend. They
+                      come to 438 MB on this machine - 391 MB plus 47 MB. It
+                      is downloaded code, some of it built for this exact
+                      computer. The other person rebuilds it with one
+                      command. Sending it can actually break their install
+                      rather than help.
+
+  backend\.env        Your database password and your JWT_SECRET. The
+                      JWT_SECRET signs login tokens, so anybody who has it can
+                      forge a login. Never send this file. They make their own
+                      from .env.example.
+
+  backend\uploads     Delivery photographs and cheque deposit slips. Right now
+                      there are 160 files in there. These are pictures of real
+                      customers' premises and real banking paperwork. Do not
+                      hand them over.
+
+  .expo               Local cache. Useless to anyone else.
+
+Everything else goes.
+
+MAKING THE ZIP
+
+On Windows, open PowerShell in the folder ABOVE the project. These two commands
+copy the project without the four items above, then zip the copy.
+
+  robocopy "KL-electricals-2026-08-26" "KL-app-to-send" /E /XD node_modules .expo uploads android ios dist web-build /XF .env *.log
+
+  Compress-Archive -Path "KL-app-to-send\*" -DestinationPath "KL-app.zip" -Force
+
+The result is about 2 MB. If your zip comes out at hundreds of megabytes then
+node_modules got in, and you should do it again.
+
+Delete the KL-app-to-send folder afterwards. It was only scratch.
+
+robocopy prints a number when it finishes. Anything from 0 to 7 means it
+worked. Only 8 and above are real failures.
+
+If you have 7-Zip you can do it in one step instead:
+
+  7z a KL-app.zip "KL-electricals-2026-08-26" -xr!node_modules -xr!.expo -xr!uploads -x!backend\.env
+
+WHAT THE OTHER PERSON DOES
+
+Two commands. That is the whole thing.
+
+They need these installed first:
+
+  Node.js, version 18 or newer, from nodejs.org
+  MySQL. XAMPP is the easy option. Start MySQL from the XAMPP control panel.
+
+Then:
+
+  1. Unzip the project. Put it somewhere with no spaces or odd characters in
+     the folder path.
+
+  2. Open a terminal in that folder and run:
+
+       npm install
+
+     Takes a few minutes and needs an internet connection. This installs both
+     halves of the project, the app and the server, in one go.
+
+  3. Then run:
+
+       npm run dev
+
+That is it. The second command works out what still needs doing and does it:
+
+  - writes backend/.env for them, with a randomly generated JWT_SECRET
+  - checks MySQL is running, and says exactly what to do if it is not
+  - creates the database and all 72 tables
+  - creates the 22 staff accounts and an ADMIN001 account
+  - loads the 8,885 items and their prices from the two spreadsheets
+  - loads the 20 incentive segments
+  - starts the server and the app together, in the one terminal
+
+It prints the login password on screen when it finishes.
+
+Every step is skipped if it has already been done, so npm run dev is also the
+normal way to start work every day after that. On an already-set-up machine it
+just prints a short list of ok lines and starts up.
+
+Output from the two halves is labelled so they can be told apart:
+
+  [api]   the server, and anything to do with the database
+  [app]   the bundler that serves the app itself
+
+Press w to open the app in a browser, or scan the QR code with the Expo Go app
+on a phone. Ctrl+C stops both halves.
+
+IF SOMETHING IS WRONG, IT SAYS WHAT TO DO
+
+The setup step never stops with a stack trace. It names the problem and the
+fix. For example, if MySQL is not running:
+
+  PROBLEM: MySQL is not answering on 127.0.0.1:3306.
+
+  → If you use XAMPP: open the XAMPP Control Panel and press Start next to
+    MySQL.
+  → Then run this again.
+
+Nothing is left half finished. Running npm run dev again after fixing the
+problem picks up where it stopped.
+
+If MySQL has a root password, the message will say so, and they put it into
+DB_PASSWORD in backend/.env.
+
+THE OTHER COMMANDS, IF THEY WANT THEM
+
+  npm run setup    do the checking and setting up, without starting anything
+  npm run app      start only the app, not the server
+  npm run web      start the app and open a browser straight away
+
+And inside the backend folder, the server on its own:
+
+  npm run dev      just the API
+
+
+They now have a working copy with the real item list and the real staff
+structure, but no orders, customers or attendance history.
+
+SENDING YOUR DATA TOO
+
+Only do this if they genuinely need it. It contains real customer names,
+balances, and staff records.
+
+On your machine, make a dump of the database. With XAMPP, mysqldump is not on
+the PATH, so use the full path to it:
+
+  "C:\xampp\mysql\bin\mysqldump.exe" -u root kl_electricals > kl_data.sql
+
+Send kl_data.sql separately from the zip. On their machine, let npm run dev
+finish first so the database exists, then load the dump over it with mysql (not
+mysqldump):
+
+  "C:\xampp\mysql\bin\mysql.exe" -u root kl_electricals < kl_data.sql
+
+Two warnings about doing this.
+
+First, the dump carries the staff password hashes with it. Every login on their
+copy will work with whatever password it had on yours. Tell them to run
+npm run secure-accounts on their copy, which forces a fresh password on every
+account.
+
+Second, if you have already run secure-accounts on your own system, then nobody
+can sign in to their copy at all until each account picks a new password. Make
+them an admin account with create-admin so they have a way in.
+
+QUICK CHECKLIST BEFORE YOU SEND
+
+  [ ] node_modules is not in the zip (the zip should be around 2 MB)
+  [ ] backend\.env is not in the zip
+  [ ] backend\uploads is not in the zip
+  [ ] The two .xlsx spreadsheets ARE in the zip
+  [ ] backend\.env.example IS in the zip
+  [ ] This guide is in the zip
+  [ ] You have decided whether they get your data, and told them either way
+
+
+===============================================================================
+PART 3 - RULES THE SOFTWARE ENFORCES
+===============================================================================
+
+These are built in. You will bump into them. They are not bugs.
+
+  - An order must be approved before it can be picked.
+  - Goods must be counted by a second person before they can be billed.
+  - The invoice bills what was counted, not what was ordered.
+  - A delivery needs the receiver's name and a photo.
+  - A purchase needs both the billed quantity and the counted quantity.
+  - A customer with no type cannot be sold to.
+  - An item with no rate cannot be sold.
+  - A rate change needs the owner's approval.
+  - Only Gaurav can change rates. Sonu cannot even see them.
+  - Nobody approves their own order, advance, or leave.
+  - The person who sends a stock transfer cannot receive it.
+  - The person who declares a cash handover cannot count it.
+  - Payments go to the oldest unpaid invoice first, always.
+  - A bounced cheque undoes the payment and cancels any discount earned on it.
+  - Cancelling an order returns the stock.
+  - Deleting is avoided everywhere. Things are marked inactive or reversed, so
+    there is always a record of what happened.
+  - A salary slip only exists for a finalised month, and does not change after.
+  - A password set by somebody else must be changed before the account works.
+
+Some of these will feel like the app being awkward. They are there because
+each one is a way money or stock went missing before.
+
+
+===============================================================================
+PART 4 - WHAT IS NOT FINISHED
+===============================================================================
+
+Being honest about this so nobody is surprised.
+
+THE ITEM LIST IS INCOMPLETE
+
+Out of 8,909 items:
+
+  8,885 have no GST rate
+  8,909 have no HSN code
+  5,225 have no price set up at all
+  8,909 have no godown or rack location
+  8,908 have no cost price
+
+You cannot print a legal GST invoice until the GST rate and HSN code are
+filled in. This is the single biggest thing standing between the software and
+day-to-day use. It is data entry, not programming.
+
+Pulling the item list from Tally may fill in the GST and HSN. Try that first,
+once Tally is connected.
+
+Without cost prices, the software cannot warn about selling below cost.
+Without godown locations, the picking screen cannot tell anyone where to look.
+
+CUSTOMERS ARE NOT ALL CLASSIFIED
+
+62 of 167 customers have no type set. They cannot be sold to until somebody
+says what they are.
+
+TALLY IS UNPROVEN
+
+Written and tested against a stand-in, never against real Tally. See 2.8.
+
+TWO SCREENS ARE PLACEHOLDERS
+
+The Orders and Item Master screens in the old web panel were left unfinished on
+purpose. The phone and tablet app covers this work.
+
+NO OFFLINE MODE
+
+The app needs the server. This is deliberate. An earlier version pretended to
+work offline and signed people in without checking passwords.
+
+
+===============================================================================
+QUICK REFERENCE
+===============================================================================
+
+STAFF AND WHAT THEY DO
+
+  yash        Yash Agarwal      Owner
+  manoj       Manoj Agarwal     Owner
+  manas       Manas             Approves orders
+  gaurav      Gaurav            Billing and rates
+  sibu        Sibu              Accounts and end of day
+  ajit        Ajit              Verify and dispatch
+  sonu        Sonu              Purchase head
+  sujay       Sujay             Godown help
+  dishal      Dishal            Godown help
+  ashish      Ashish            Picker
+  rajesh      Rajesh            Picker
+  hirak       Hirak             Picker
+  ganesh      Ganesh            Picker
+  pulen       Pulen             Showroom
+  prabal      Prabal            Showroom and picking
+  kamal       Kamal             Driver
+  siva        Siva              Driver
+  shankar     Shankar           Loading
+  damodar     Damodar           Cheque deposit
+  monu        Monu              Salesman, Guwahati
+  prasenjit   Prasenjit         Salesman, interior and builders
+  manish      Manish            Salesman, outside
+
+THE PATH AN ORDER TAKES
+
+  Order raised
+     -> Approved by Manas
+     -> Picked by a picker
+     -> Counted by Ajit
+     -> Billed by Gaurav
+     -> Put on a dispatch sheet
+     -> Delivered by a driver
+
+  An order can be cancelled at most stages. Stock goes back automatically.
+  A failed delivery goes back on a sheet rather than ending the order.
+
+SHIFT TIMES
+
+  Shift A    10:00 am to 6:45 pm    late after 10:10    half day before 6:00 pm
+  Shift B    11:00 am to 8:00 pm    late after 11:10    half day before 7:00 pm
+
+  More than 1 hour late counts as absent.
+
+CASH DISCOUNT FOR DEALERS
+
+  Paid within 2 days       2.5 percent
+  Paid within 3 to 10      2 percent
+  Paid within 11 to 20     1 percent
+
+INCENTIVE
+
+  Under 90 percent of target    nothing
+  90 to 99 percent              80 percent of base
+  100 percent                   full base
+  101 percent and over          110 percent, and that is the most
+
+HEALTH CHECKS
+
+  curl localhost:5000/health       server alive
+  curl localhost:5000/health/db    database reachable
+
+===============================================================================
+END
+===============================================================================

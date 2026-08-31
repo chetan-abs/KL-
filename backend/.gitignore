@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+
+# Delivery photos and other field captures. Content, not code — and these are
+# photographs of identified people's premises, which must not reach a repo.
+uploads/

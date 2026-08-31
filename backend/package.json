@@ -1,0 +1,46 @@
+{
+  "name": "kl-electricals-backend",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "init-db": "node scripts/init-db.js",
+    "build-init-sql": "node scripts/build-init-sql.js",
+    "create-admin": "node scripts/create-admin.js",
+    "purge-locations": "node scripts/purge-locations.js",
+    "auto-checkout": "node scripts/auto-checkout.js",
+    "migrate": "node scripts/migrate.js",
+    "seed-roles": "node scripts/seed-roles.js",
+    "recompute": "node scripts/recompute-caches.js",
+    "import-rates": "node scripts/import-rates.js",
+    "seed-segments": "node scripts/seed-segments.js",
+    "seed-business": "node scripts/seed-business.js",
+    "alerts": "node scripts/run-alerts.js",
+    "test:pricing": "node tests/pricing-test.js",
+    "test:invariants": "node tests/invariants-test.js",
+    "test:business": "node tests/business-test.js",
+    "rebuild-schema": "node scripts/rebuild-schema.js",
+    "test:schema": "node tests/schema-test.js",
+    "test:all": "node tests/api-coverage-test.js && node tests/pricing-test.js && node tests/invariants-test.js && node tests/schema-test.js && node tests/tally-test.js && node tests/business-test.js && node tests/growth-test.js",
+    "tally": "node scripts/tally-sync.js",
+    "test:growth": "node tests/growth-test.js",
+    "test:tally": "node tests/tally-test.js",
+    "test:api": "node tests/api-coverage-test.js",
+    "secure-accounts": "node scripts/secure-accounts.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.6.0",
+    "pdfkit": "^0.20.2",
+    "xlsx": "^0.18.5"
+  }
+}
