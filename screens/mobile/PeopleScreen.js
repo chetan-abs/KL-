@@ -7,8 +7,10 @@ import { SHIFTS } from '../../constants/options';
 import { Users } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { userCan } from '../../utils/permissions';
+import { checkPassword } from '../../utils/password';
 import { confirmAction, showAlert } from '../../services/confirm';
 import { rupees } from '../../utils/format';
+import { formatDate } from '../../utils/datetime';
 import AppText from '../../components/AppText';
 import Screen from '../../components/mobile/Screen';
 import ScreenHeader from '../../components/mobile/ScreenHeader';
@@ -44,6 +46,8 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
   const [draft, setDraft] = React.useState(null);
   const [shiftDraft, setShiftDraft] = React.useState('A');
   const [salaryDraft, setSalaryDraft] = React.useState('');
+  const [pwDraft, setPwDraft] = React.useState('');
+  const [pwError, setPwError] = React.useState(null);
 
   const staff = (data?.employees || []).filter((u) => u.is_active);
   const canCreate = userCan(user, 'employees.create');
@@ -73,6 +77,30 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
     }
   );
 
+  /**
+   * The owner's actual power over a password: replace it. Nothing shows the
+   * existing one — `users.password` is a bcrypt hash everywhere in this
+   * system, and there is no operation that turns a hash back into what was
+   * typed. This is the honest equivalent of "I want the passwords" — the
+   * account is handed a new one it must change on first use, the same
+   * treatment a freshly created account gets (migration 015).
+   */
+  const resetPw = useAction(
+    ({ id, password }) => Users.update(id, { password }),
+    {
+      onDone: (_, id) => {
+        setPwDraft('');
+        setPwError(null);
+        showAlert(
+          'Password reset',
+          'They can sign in with it once, and must choose their own before anything else opens.'
+        );
+        reload();
+      },
+      onFail: (message) => showAlert('Could not reset', message),
+    }
+  );
+
   function open(person) {
     if (openId === person.id) {
       setOpenId(null);
@@ -92,6 +120,19 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
     );
     setShiftDraft(person.shift_code || 'A');
     setSalaryDraft(String(Number(person.fixed_salary) || 0));
+    setPwDraft('');
+    setPwError(null);
+  }
+
+  function submitReset(person) {
+    const err = checkPassword(pwDraft);
+    if (err) return setPwError(err);
+    setPwError(null);
+    confirmAction(
+      `Reset ${person.name}'s password?`,
+      'Their current password stops working immediately. They sign in with this one once, then must choose their own.',
+      () => resetPw.run({ id: person.id, password: pwDraft })
+    );
   }
 
   function toggle(pageKey, actionKey) {
@@ -145,6 +186,11 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
             : JSON.parse(person.permissions || '[]');
           const wildcard = granted.includes(WILDCARD);
           const self = person.id === user?.id;
+          const pwStatus = person.must_change_password
+            ? { label: 'Must change', tone: 'warning' }
+            : person.password_changed_at
+              ? { label: 'Own password', tone: 'success' }
+              : { label: 'Unknown', tone: 'neutral' };
 
           return (
             <Card key={person.id} style={styles.person}>
@@ -162,6 +208,7 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
                     {`${person.id} · ${wildcard ? 'full access' : `${granted.length} grant(s)`}`}
                   </AppText>
                 </View>
+                <Badge tone={pwStatus.tone}>{pwStatus.label}</Badge>
                 {wildcard ? <Badge tone="violet">All</Badge> : null}
                 <AppText size="md" color={COLORS.textSecondary}>{isOpen ? '⌃' : '⌄'}</AppText>
               </TouchableOpacity>
@@ -205,6 +252,42 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
                             () => saveWork.run({ id: person.id, shift_code: shiftDraft, fixed_salary: Number(salaryDraft) || 0 })
                           )
                         }
+                      />
+                    </View>
+                  ) : null}
+
+                  {canSetSalary ? (
+                    <View style={styles.workBlock}>
+                      <AppText weight="bold" size={11} color={COLORS.textSecondary} style={styles.workLabel}>
+                        CREDENTIALS
+                      </AppText>
+                      <NoticeBar tone="info" glyph="🔑" style={styles.pwNotice}>
+                        Nothing shows an existing password — it is stored as a hash nobody, including
+                        this screen, can read back. Resetting replaces it; the new one works once.
+                      </NoticeBar>
+                      <AppText size="xs" color={COLORS.textSecondary} style={styles.meta}>
+                        {person.must_change_password
+                          ? 'On a password an admin set. Not yet changed.'
+                          : person.password_changed_at
+                            ? `Own password, set ${formatDate(person.password_changed_at)}.`
+                            : 'No record of a password change.'}
+                      </AppText>
+                      <Field
+                        label="New password"
+                        style={styles.spaced}
+                        value={pwDraft}
+                        onChangeText={(v) => { setPwDraft(v); if (pwError) setPwError(null); }}
+                        secureTextEntry
+                        error={pwError}
+                        hint="At least 8 characters. They must change it on first use."
+                      />
+                      <ActionButton
+                        label="Reset password"
+                        tone="reject"
+                        size="sm"
+                        style={styles.spaced}
+                        loading={resetPw.busy}
+                        onPress={() => submitReset(person)}
                       />
                     </View>
                   ) : null}
@@ -291,4 +374,5 @@ const styles = StyleSheet.create({
   },
   workLabel: { letterSpacing: 0.6, marginBottom: 10 },
   spaced: { marginTop: 11 },
+  pwNotice: { marginBottom: 10 },
 });
