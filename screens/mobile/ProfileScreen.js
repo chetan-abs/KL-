@@ -102,29 +102,38 @@ export default function ProfileScreen({
         />
       </Card>
 
-      {/* Everybody's own pay.
-          These live here rather than on the tab bar because the bar holds five
-          slots and three of them are already spoken for by the duty somebody
-          does all day. Pay is looked at once a month; a duty is looked at
-          hourly, and the tab that matters is the one you reach without
-          thinking. */}
-      <Card title="Your pay" flush>
+      {/* Everybody's own pay — except an owner, who draws none. Yash and
+          Manoj are proprietors, not salaried staff: there is no fixed_salary
+          row meant for them, and a Salary screen open on an owner would show
+          either someone else's figures or a meaningless ₹0 ledger. Advances
+          and leave stay on the card for an owner too, but as the register and
+          approve view rather than a request form — see AdvancesScreen. */}
+      <Card title={role.isOwner ? 'Payroll' : 'Your pay'} flush>
+        {!role.isOwner ? (
+          <LinkRow
+            title="Salary"
+            subtitle="This month's ledger, its deductions and the slip"
+            onPress={onOpenSalary}
+          />
+        ) : null}
         <LinkRow
-          title="Salary"
-          subtitle="This month's ledger, its deductions and the slip"
-          onPress={onOpenSalary}
-        />
-        <LinkRow
-          title="Advances &amp; leave"
-          subtitle="Request an advance, apply for leave"
+          title="Advances & leave"
+          subtitle={
+            role.isOwner
+              ? "See who's taken an advance or applied for leave, and decide it"
+              : 'Request an advance, apply for leave'
+          }
           onPress={onOpenAdvances}
+          last={role.isOwner}
         />
-        <LinkRow
-          title="Incentive"
-          subtitle="Progress against the twenty segments"
-          onPress={onOpenIncentive}
-          last
-        />
+        {!role.isOwner ? (
+          <LinkRow
+            title="Incentive"
+            subtitle="Progress against the twenty segments"
+            onPress={onOpenIncentive}
+            last
+          />
+        ) : null}
       </Card>
 
       {canManagePeople ? (

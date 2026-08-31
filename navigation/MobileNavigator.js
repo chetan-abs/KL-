@@ -175,6 +175,10 @@ export default function MobileNavigator() {
     name: user.name,
     title: titleFor(user),
     key: user.id,
+    // Yash or Manoj specifically, not "anyone who can approve" — Manas also
+    // approves leave (leave.approve) but is still an employee who requests
+    // his own, so this has to name the owner, not the wider approval grant.
+    isOwner: userCan(user, 'all'),
     managesSalary: userCan(user, 'salary') || userCan(user, 'salary.manage'),
     approvesLeave: userCan(user, 'leave') || userCan(user, 'leave.approve'),
     approvesIncentives: userCan(user, 'incentives') || userCan(user, 'incentives.approve'),

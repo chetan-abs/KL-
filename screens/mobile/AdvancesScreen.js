@@ -134,7 +134,17 @@ export default function AdvancesScreen({ role, nav, onBack }) {
         />
       </View>
 
-      {showing ? (
+      {/* An owner draws no salary, so there is nothing for a recovery
+          instalment to come off, and no leave of their own to apply for. The
+          request forms are for staff; an owner's version of this screen is
+          the register and the approve buttons below, nothing above them. */}
+      {role.isOwner ? (
+        <NoticeBar tone="info">
+          {showing
+            ? "An owner's view — every advance on record, and the approve/decline that only Yash or Manoj can give."
+            : "An owner's view — every leave request on record, and the decision."}
+        </NoticeBar>
+      ) : showing ? (
         <Card title="Request an advance">
           <Field
             label="Amount"
