@@ -1,0 +1,47 @@
+# Deploys KL Electricals to the ABSCloud sandbox VM (compute3 / vm 970) on every
+# push to main, using a self-hosted runner that lives on that same VM.
+#
+# This SUPERSEDES the /deploy-hook webhook. Both paths call the same deploy.sh,
+# so leaving the webhook enabled as well would deploy twice per push -- delete
+# the webhook (Settings -> Webhooks) when this workflow is running.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time. deploy.sh does `git reset --hard origin/main`, so two
+# concurrent runs would fight over the same working tree.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, kl-electricals]
+    timeout-minutes: 20
+    steps:
+      # No actions/checkout: deploy.sh fetches and hard-resets the real
+      # deployment tree at ~/apps/kl-electricals itself. A second checkout
+      # would just be a copy nothing serves.
+      - name: Run deploy
+        run: /home/absstaff/apps/kl-electricals/deploy.sh
+
+      - name: Deploy log
+        if: always()
+        # deploy.sh redirects its own output to ~/deploy.log, so without this
+        # the job would succeed or fail with an empty console.
+        run: awk '/deploy started/{buf=""} {buf=buf $0 ORS} END{printf "%s", buf}' ~/deploy.log
+
+      - name: Verify the live site serves the right API base
+        run: |
+          set -euo pipefail
+          curl -fsS -o /dev/null https://klelectricals.abscloud.in/health
+          B=$(curl -fsS https://klelectricals.abscloud.in/ \
+              | grep -oE '_expo/static/js/web/index-[a-f0-9]*\.js' | head -1)
+          echo "served bundle: $B"
+          # The failure this catches is a page that loads fine while every API
+          # call goes to a dead host -- exactly how the tunnel cutover broke it.
+          curl -fsS "https://klelectricals.abscloud.in/$B" | grep -q 'klelectricals\.abscloud\.in'
+          echo "bundle points at the current public URL"
