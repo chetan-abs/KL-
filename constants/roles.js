@@ -129,15 +129,32 @@ export function homeFor(user) {
  * anybody who has not already signed in.
  */
 export const ROLES = {
-  manas: { key: 'manas', name: 'Manas', title: 'Approvals' },
-  monu: { key: 'monu', name: 'Monu', title: 'Field Sales' },
-  ashish: { key: 'ashish', name: 'Ashish', title: 'Picking' },
-  ajit: { key: 'ajit', name: 'Ajit', title: 'Verify & Dispatch' },
-  gaurav: { key: 'gaurav', name: 'Gaurav', title: 'Billing' },
-  kamal: { key: 'kamal', name: 'Kamal', title: 'Delivery' },
-  sonu: { key: 'sonu', name: 'Sonu', title: 'Purchase' },
-  sibu: { key: 'sibu', name: 'Sibu', title: 'Cash & Close' },
   yash: { key: 'yash', name: 'Yash', title: 'Owner' },
+  manoj: { key: 'manoj', name: 'Manoj', title: 'Owner' },
+  manas: { key: 'manas', name: 'Manas', title: 'Sales Orders & Purchase Entry' },
+  gaurav: { key: 'gaurav', name: 'Gaurav', title: 'Order & Rate Desk + Billing' },
+  sibu: { key: 'sibu', name: 'Sibu', title: 'Purchase, Cash & EOD' },
+  // Verification moved off Ajit onto Sonu in the September 2026 role sheet —
+  // see backend/scripts/seed-business.js for the reasoning.
+  ajit: { key: 'ajit', name: 'Ajit', title: 'Picking & Dispatch' },
+  sonu: { key: 'sonu', name: 'Sonu', title: 'Goods Verification + Loading' },
+  sujay: { key: 'sujay', name: 'Sujay', title: 'Godown' },
+  dishal: { key: 'dishal', name: 'Dishal', title: 'Counter Stock' },
+  ashish: { key: 'ashish', name: 'Ashish', title: 'Picker' },
+  rajesh: { key: 'rajesh', name: 'Rajesh', title: 'Picker' },
+  hirak: { key: 'hirak', name: 'Hirak', title: 'Ambari Godown (Backup Verifier)' },
+  ganesh: { key: 'ganesh', name: 'Ganesh', title: 'Picker' },
+  prabal: { key: 'prabal', name: 'Prabal', title: 'Picker — Urgent' },
+  pulen: { key: 'pulen', name: 'Pulen', title: 'Counter' },
+  bhaity: { key: 'bhaity', name: 'Bhaity', title: 'Retail + Customer Relations' },
+  kamal: { key: 'kamal', name: 'Kamal', title: 'Driver' },
+  siva: { key: 'siva', name: 'Siva', title: 'Driver' },
+  shankar: { key: 'shankar', name: 'Shankar', title: 'Helper — Loading' },
+  damodar: { key: 'damodar', name: 'Damodar', title: 'Helper — Cheques & Local Purchase' },
+  monu: { key: 'monu', name: 'Monu', title: 'Salesman — Guwahati' },
+  manish: { key: 'manish', name: 'Manish', title: 'Salesman — Outside' },
+  pankaj: { key: 'pankaj', name: 'Pankaj', title: 'Salesman — Builder' },
+  prasenjit: { key: 'prasenjit', name: 'Prasenjit', title: 'Salesman — ID' },
 };
 
 /** The title to show beside a signed-in user's name, if we know one. */

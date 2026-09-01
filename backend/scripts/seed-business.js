@@ -46,60 +46,80 @@ const STAFF = [
     permissions: ['all'] },
 
   // --- office --------------------------------------------------------------
-  { id: 'manas', name: 'Manas', title: 'Order Manager', shift: 'B', salary: 0,
+  // CHANGED FROM v1 (2. User roles & access, September 2026): the order desk,
+  // order approval, verification and the retail counter all moved. Manas now
+  // also does bank reconciliation and purchase entries; Sibu's purchase
+  // verification is explicitly "cannot self-approve" — the account only, the
+  // second-approver check itself is not yet built and is a known gap.
+  { id: 'manas', name: 'Manas', title: 'Sales Orders & Purchase Entry', shift: 'B', salary: 0,
     permissions: ['orders', 'customers.view', 'items.view', 'agents.view',
-      'payments.view', 'attendance', 'leave.approve', 'cash.view', 'items.rates'] },
-  { id: 'gaurav', name: 'Gaurav', title: 'Billing & Rates', shift: 'A', salary: 0,
+      'payments.view', 'attendance', 'leave.approve', 'cash.view', 'items.rates',
+      'purchases.create', 'purchases.view'] },
+  { id: 'gaurav', name: 'Gaurav', title: 'Order & Rate Desk + Billing', shift: 'A', salary: 0,
     // R-04: `items.pricing` is the rate-edit grant and Gaurav is the only
     // account that holds it. `items.rates` — merely SEEING a rate — is held by
     // everyone who quotes or bills; only Sonu is excluded (R-07).
     permissions: ['billing', 'returns', 'orders.view', 'customers.view',
       'items.view', 'items.rates', 'items.pricing', 'payments'] },
-  { id: 'sibu', name: 'Sibu', title: 'Accounts & EOD', shift: 'B', salary: 0,
+  { id: 'sibu', name: 'Sibu', title: 'Purchase, Cash & EOD', shift: 'B', salary: 0,
     permissions: ['cheques', 'eod', 'payments', 'customers.view', 'billing.view',
       'purchases', 'incentives.pay', 'items.rates',
       // Section 8: Sibu counts what a salesman brings in, and closes the
       // cash book. Section 14: he administers the Tally integration.
       'cash.manage', 'tally.manage'] },
-  { id: 'ajit', name: 'Ajit', title: 'Verify & Dispatch', shift: 'A', salary: 0,
-    permissions: ['verification', 'dispatch', 'orders.view', 'items.view',
+  // Verification moved off Ajit onto Sonu ("Goods verification + loading —
+  // verifies what the picker has picked, after picking") — pickers explicitly
+  // "cannot verify: whoever picks does not check". Ajit keeps dispatch, which
+  // the September sheet does not reassign.
+  { id: 'ajit', name: 'Ajit', title: 'Picking & Dispatch', shift: 'A', salary: 0,
+    permissions: ['dispatch', 'orders.view', 'items.view',
       'customers.view', 'employees.view', 'stock_count.post'] },
-  { id: 'sonu', name: 'Sonu', title: 'Purchase Head', shift: 'B', salary: 0,
+  { id: 'sonu', name: 'Sonu', title: 'Goods Verification + Loading', shift: 'B', salary: 0,
     // R-07: Sonu must not see rates. `items.view` alone shows names and
     // quantities; `items.rates` is what reveals the rate columns, and he is
-    // deliberately not given it.
-    permissions: ['purchases', 'items.view', 'items.create', 'items.edit',
-      'stock_count.view', 'returns'] },
+    // deliberately not given it. `verification` is new — this is the account
+    // that now signs off what a picker picked.
+    permissions: ['purchases', 'verification', 'items.view', 'items.create',
+      'items.edit', 'stock_count.view', 'returns'] },
 
   // --- godown --------------------------------------------------------------
-  { id: 'sujay', name: 'Sujay', title: 'Godown Help', shift: 'A', salary: 0,
+  { id: 'sujay', name: 'Sujay', title: 'Godown', shift: 'A', salary: 0,
     permissions: ['purchases.create', 'purchases.view', 'items.view', 'picking'] },
-  { id: 'dishal', name: 'Dishal', title: 'Godown Help', shift: 'A', salary: 0,
-    permissions: ['purchases.create', 'purchases.view', 'items.view', 'picking'] },
+  // Dishal is Counter Stock (rack refill, counter runner), not Godown — was
+  // seeded with Sujay's godown grants by mistake; corrected here.
+  { id: 'dishal', name: 'Dishal', title: 'Counter Stock', shift: 'A', salary: 0,
+    permissions: ['items.view', 'stock_count.view', 'picking'] },
 
   // --- pickers -------------------------------------------------------------
   { id: 'ashish', name: 'Ashish', title: 'Picker', shift: 'A', salary: 0,
     permissions: ['picking', 'items.view', 'orders.view'] },
   { id: 'rajesh', name: 'Rajesh', title: 'Picker', shift: 'A', salary: 0,
     permissions: ['picking', 'items.view', 'orders.view'] },
-  { id: 'hirak', name: 'Hirak', title: 'Picker', shift: 'A', salary: 0,
-    // Hirak is the second of the two daily stock counters (section 10).
-    permissions: ['picking', 'items.view', 'orders.view', 'stock_count.post'] },
+  // Hirak is Ambari godown in charge and bin numbering, and the named backup
+  // verifier when Sonu is absent — hence the `verification` grant alongside
+  // picking, which nobody else on the picker roster holds.
+  { id: 'hirak', name: 'Hirak', title: 'Ambari Godown (Backup Verifier)', shift: 'A', salary: 0,
+    permissions: ['picking', 'verification', 'items.view', 'orders.view', 'stock_count.post'] },
   { id: 'ganesh', name: 'Ganesh', title: 'Picker', shift: 'A', salary: 0,
     permissions: ['picking', 'items.view', 'orders.view'] },
-
-  // --- showroom ------------------------------------------------------------
-  // `showroom` is what puts the two of them in the shared incentive pool —
-  // "Pulen and Prabal share a combined incentive pool". A grant rather than a
-  // list of names in code, so replacing one is an admin action.
-  { id: 'pulen', name: 'Pulen', title: 'Showroom', shift: 'A', salary: 0,
-    permissions: ['showroom', 'orders.view', 'orders.create', 'estimates.view',
-      'estimates.create', 'customers.view', 'customers.create', 'items.view',
-      'agents.view', 'agents.create', 'schemes', 'items.rates'] },
-  { id: 'prabal', name: 'Prabal', title: 'Showroom & Picking', shift: 'A', salary: 0,
+  // Picks urgent orders only, so a rush order does not disturb the batch.
+  { id: 'prabal', name: 'Prabal', title: 'Picker — Urgent', shift: 'A', salary: 0,
     permissions: ['showroom', 'orders.view', 'orders.create', 'estimates.view',
       'estimates.create', 'customers.view', 'customers.create', 'items.view',
       'agents.view', 'agents.create', 'schemes', 'items.rates', 'picking'] },
+
+  // --- counter ---------------------------------------------------------------
+  // `showroom` is what puts Pulen and Prabal in the shared incentive pool —
+  // "Pulen and Prabal share a combined incentive pool". A grant rather than a
+  // list of names in code, so replacing one is an admin action.
+  { id: 'pulen', name: 'Pulen', title: 'Counter', shift: 'A', salary: 0,
+    permissions: ['showroom', 'orders.view', 'orders.create', 'estimates.view',
+      'estimates.create', 'customers.view', 'customers.create', 'items.view',
+      'agents.view', 'agents.create', 'schemes', 'items.rates'] },
+  // Retail + customer relations: counter support, follow-up and complaints,
+  // calls the party before a delivery slot is going to slip.
+  { id: 'bhaity', name: 'Bhaity', title: 'Retail + Customer Relations', shift: 'A', salary: 0,
+    permissions: ['orders.view', 'customers.view', 'customers.create', 'items.view'] },
 
   // --- drivers and helpers -------------------------------------------------
   // Deliberately thin: every route a driver uses is scoped to req.user.id.
@@ -107,10 +127,11 @@ const STAFF = [
     permissions: ['orders.view'] },
   { id: 'siva', name: 'Siva', title: 'Driver', shift: 'A', salary: 0,
     permissions: ['orders.view'] },
-  { id: 'shankar', name: 'Shankar', title: 'Loading', shift: 'A', salary: 0,
+  { id: 'shankar', name: 'Shankar', title: 'Helper — Loading', shift: 'A', salary: 0,
     permissions: ['orders.view'] },
-  { id: 'damodar', name: 'Damodar', title: 'Cheque Deposit', shift: 'A', salary: 0,
-    permissions: ['cheques.view', 'cheques.deposit'] },
+  // Damodar also does cheque deposit and local market purchase.
+  { id: 'damodar', name: 'Damodar', title: 'Helper — Cheques & Local Purchase', shift: 'A', salary: 0,
+    permissions: ['cheques.view', 'cheques.deposit', 'purchases.create'] },
 
   // --- field sales ---------------------------------------------------------
   // Action grants, not area: a salesman sees their own book. The area grant is
@@ -121,13 +142,25 @@ const STAFF = [
       'items.view', 'estimates.view', 'estimates.create', 'agents.view',
       'agents.create', 'schemes.view', 'schemes.create',
       'items.rates', 'payments.create'] },
-  { id: 'prasenjit', name: 'Prasenjit', title: 'Salesman — ID/Builder', shift: 'A', salary: 0,
+  // Interior designers, architects, electricians and Lemac — split from
+  // Pankaj (builders) in the September 2026 sheet; previously combined here
+  // as "Salesman — ID/Builder".
+  { id: 'prasenjit', name: 'Prasenjit', title: 'Salesman — ID', shift: 'A', salary: 0,
     geofenced: false,
     permissions: ['orders.view', 'orders.create', 'customers.view', 'customers.create',
       'items.view', 'estimates.view', 'estimates.create', 'agents.view',
       'agents.create', 'schemes.view', 'schemes.create',
       'items.rates', 'payments.create'] },
   { id: 'manish', name: 'Manish', title: 'Salesman — Outside', shift: 'A', salary: 0,
+    geofenced: false,
+    permissions: ['orders.view', 'orders.create', 'customers.view', 'customers.create',
+      'items.view', 'estimates.view', 'estimates.create', 'agents.view',
+      'agents.create', 'schemes.view', 'schemes.create',
+      'items.rates', 'payments.create'] },
+  // Builders and contractors — measured on collected value, not orders
+  // booked (the sheet flags this as a different KPI; nothing here changes
+  // how the app measures it, that is a reporting decision, not a permission).
+  { id: 'pankaj', name: 'Pankaj', title: 'Salesman — Builder', shift: 'A', salary: 0,
     geofenced: false,
     permissions: ['orders.view', 'orders.create', 'customers.view', 'customers.create',
       'items.view', 'estimates.view', 'estimates.create', 'agents.view',
