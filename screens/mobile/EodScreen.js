@@ -164,6 +164,32 @@ export default function EodScreen({ role, nav, onOpenHandover }) {
               <DetailRow label="Cheques in" value={rupees(data?.cheques_in || 0)} last />
             </Card>
 
+            {/* 3.2 / 3.3 — the count of below-rate requests and credit
+                overrides per person, so a below-rate sale that "waited for
+                approval after billing" (which is a loss, not an approval) or
+                a quietly-lifted block is caught here rather than nowhere. */}
+            {(data?.exceptions?.below_rate_requests?.length || data?.exceptions?.credit_overrides?.length) ? (
+              <Card title="Exceptions today" flush>
+                {(data.exceptions.below_rate_requests || []).map((r, i) => (
+                  <DetailRow
+                    key={`br-${r.requested_by}-${r.tier}-${i}`}
+                    label={`${r.requested_by_name || r.requested_by || 'Unknown'} — below-rate (${r.tier})`}
+                    value={`${r.n}`}
+                    tone={r.tier === 'owner' ? 'danger' : r.tier === 'sibu' ? 'warning' : 'muted'}
+                  />
+                ))}
+                {(data.exceptions.credit_overrides || []).map((r, i) => (
+                  <DetailRow
+                    key={`ov-${r.overridden_by}-${r.kind}-${i}`}
+                    label={`${r.overridden_by_name || r.overridden_by} — ${r.kind === 'credit_limit' ? 'credit limit override' : '60-day override'}`}
+                    value={`${r.n}`}
+                    tone="danger"
+                    last={i === (data.exceptions.credit_overrides.length - 1) && !data.exceptions.below_rate_requests?.length}
+                  />
+                ))}
+              </Card>
+            ) : null}
+
             <Card title="Cash drawer">
               <Field
                 label="Opening cash"

@@ -66,7 +66,9 @@ const STAFF = [
       'purchases', 'incentives.pay', 'items.rates',
       // Section 8: Sibu counts what a salesman brings in, and closes the
       // cash book. Section 14: he administers the Tally integration.
-      'cash.manage', 'tally.manage'] },
+      // Section 3.2: Sibu approves a rate-change request more than 2% below
+      // the current rate (below cost is still owner-only — see routes/items.js).
+      'cash.manage', 'tally.manage', 'rate_variance.approve'] },
   // Verification moved off Ajit onto Sonu ("Goods verification + loading —
   // verifies what the picker has picked, after picking") — pickers explicitly
   // "cannot verify: whoever picks does not check". Ajit keeps dispatch, which
@@ -329,11 +331,12 @@ async function main() {
 
         await conn.query(
           `INSERT INTO users
-             (id, name, email, role, shift_code, fixed_salary, geofenced, password, permissions,
+             (id, name, email, role, title, shift_code, fixed_salary, geofenced, password, permissions,
               is_active, must_change_password)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
           [s.id, s.name, `${s.id}@klelectricals.local`,
             s.permissions.includes('all') ? 'admin' : 'employee',
+            s.title || null,
             s.shift, s.salary, geofenced, await bcrypt.hash(password, 10), grants,
             // Forced to change unless a person named the password. Same rule as
             // seed-roles.js; both are enforced by `authenticate`.
@@ -343,10 +346,10 @@ async function main() {
         // Never the password. Somebody may have changed theirs, and resetting
         // grants is an administrative act; resetting a password is not.
         await conn.query(
-          `UPDATE users SET name = ?, shift_code = ?, geofenced = ?, permissions = ?,
+          `UPDATE users SET name = ?, title = ?, shift_code = ?, geofenced = ?, permissions = ?,
                             fixed_salary = CASE WHEN fixed_salary = 0 THEN ? ELSE fixed_salary END
             WHERE id = ?`,
-          [s.name, s.shift, geofenced, grants, s.salary, s.id]);
+          [s.name, s.title || null, s.shift, geofenced, grants, s.salary, s.id]);
         updated += 1;
       } else {
         untouched += 1;

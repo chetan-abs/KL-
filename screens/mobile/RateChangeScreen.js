@@ -71,6 +71,7 @@ export default function RateChangeScreen({ role, nav, onBack }) {
   const COLORS = useThemeColors();
   const styles = React.useMemo(() => StyleSheet.create({
   tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badges: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   reason: { marginTop: 8 },
   changes: { marginTop: 12, gap: 8 },
   change: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -92,7 +93,14 @@ export default function RateChangeScreen({ role, nav, onBack }) {
 
   const batches = data?.batches || [];
   // The server is the judge; this only decides whether to draw the controls.
+  // 3.2 tiers the requirement itself — a batch needing only Sibu's sign-off
+  // (`can_decide`) is not the same as one that needs an owner, so each batch
+  // carries its own answer rather than one screen-wide flag.
   const canApprove = data?.can_approve === true;
+  const canApproveAny = canApprove || data?.can_approve_variance === true;
+
+  const TIER_LABEL = { auto: 'Auto', sibu: 'Sibu', owner: 'Owner only' };
+  const TIER_TONE = { auto: 'success', sibu: 'pending', owner: 'danger' };
 
   const askApprove = (batch) => confirmAction(
     `Approve ${batch.changes.length} change${batch.changes.length > 1 ? 's' : ''}?`,
@@ -144,9 +152,9 @@ export default function RateChangeScreen({ role, nav, onBack }) {
         ))}
       </View>
 
-      {status === 'pending' && !canApprove && batches.length ? (
+      {status === 'pending' && !canApproveAny && batches.length ? (
         <NoticeBar tone="info">
-          You can see what is waiting, but only Yash or Manoj may decide it (R-11).
+          You can see what is waiting, but only Sibu or an owner may decide it (3.2 / R-11).
         </NoticeBar>
       ) : null}
 
@@ -162,9 +170,18 @@ export default function RateChangeScreen({ role, nav, onBack }) {
           <Card
             key={batch.batch_ref || `single-${batch.item_id}`}
             title={batch.item_name}
-            right={<Badge tone={status === 'pending' ? 'pending' : 'neutral'}>
-              {`${batch.changes.length} field${batch.changes.length > 1 ? 's' : ''}`}
-            </Badge>}
+            right={
+              <View style={styles.badges}>
+                {status === 'pending' ? (
+                  <Badge tone={TIER_TONE[batch.tier] || 'neutral'}>
+                    {TIER_LABEL[batch.tier] || batch.tier}
+                  </Badge>
+                ) : null}
+                <Badge tone={status === 'pending' ? 'pending' : 'neutral'}>
+                  {`${batch.changes.length} field${batch.changes.length > 1 ? 's' : ''}`}
+                </Badge>
+              </View>
+            }
           >
             <AppText size="xs" color={COLORS.textMuted}>
               {[
@@ -188,11 +205,14 @@ export default function RateChangeScreen({ role, nav, onBack }) {
                   </AppText>
                   <AppText size="sm" color={COLORS.textMuted}>→</AppText>
                   <AppText weight="bold" size="sm">{change.to ?? '—'}</AppText>
+                  {change.variance_percent !== null && change.variance_percent !== undefined ? (
+                    <AppText size="xs" color={COLORS.textMuted}>{`${change.variance_percent}% below`}</AppText>
+                  ) : null}
                 </View>
               ))}
             </View>
 
-            {status === 'pending' && canApprove ? (
+            {status === 'pending' && batch.can_decide ? (
               <View style={styles.actions}>
                 <ActionButton
                   tone="approve"

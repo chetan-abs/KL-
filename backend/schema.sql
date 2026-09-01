@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS users (
   email varchar(100) DEFAULT NULL,
   phone varchar(20) DEFAULT NULL,
   role enum('admin','employee') NOT NULL DEFAULT 'employee',
+  title varchar(100) DEFAULT NULL,
   shift_code varchar(8) DEFAULT NULL,
   fixed_salary decimal(15,2) NOT NULL DEFAULT '0.00',
   geofenced tinyint(1) NOT NULL DEFAULT '1',
@@ -1759,11 +1760,13 @@ CREATE TABLE IF NOT EXISTS item_rate_changes (
   item_id int NOT NULL,
   item_name varchar(100) NOT NULL,
   field varchar(40) NOT NULL,
+  tier varchar(10) NOT NULL DEFAULT 'owner',
+  variance_percent decimal(6,2) DEFAULT NULL,
   old_value decimal(15,6) DEFAULT NULL,
   new_value decimal(15,6) DEFAULT NULL,
   batch_ref varchar(32) DEFAULT NULL,
   reason varchar(255) DEFAULT NULL,
-  status enum('pending','approved','rejected','superseded') NOT NULL DEFAULT 'pending',
+  status enum('pending','approved','rejected','superseded','auto_approved') NOT NULL DEFAULT 'pending',
   requested_by varchar(20) DEFAULT NULL,
   requested_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   decided_by varchar(20) DEFAULT NULL,
@@ -1974,6 +1977,24 @@ CREATE TABLE IF NOT EXISTS password_change_requests (
   KEY decided_by (decided_by),
   CONSTRAINT password_change_requests_ibfk_1 FOREIGN KEY (employee_id) REFERENCES users (id) ON DELETE CASCADE,
   CONSTRAINT password_change_requests_ibfk_2 FOREIGN KEY (decided_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- order_overrides
+-- Added by migration. See migrations/ for the reasoning behind this table.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS order_overrides (
+  id int NOT NULL AUTO_INCREMENT,
+  order_id int NOT NULL,
+  kind varchar(20) NOT NULL,
+  overridden_by varchar(20) NOT NULL,
+  note varchar(255) DEFAULT NULL,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_order (order_id),
+  KEY overridden_by (overridden_by),
+  CONSTRAINT order_overrides_ibfk_1 FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
+  CONSTRAINT order_overrides_ibfk_2 FOREIGN KEY (overridden_by) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ===========================================================================

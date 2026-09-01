@@ -718,6 +718,35 @@ router.get('/eod', requirePermission('eod.view'), async (req, res, next) => {
 
     const [[closed]] = await pool.query('SELECT * FROM eod_closings WHERE close_date = ?', [day]);
 
+    // 3.2 — "The count of below-rate requests per user must appear in the EOD
+    // exception report." Every tier counts, including an auto-applied one:
+    // auto-approved is still a below-rate sale, only decided by the 2% band
+    // rather than by a person. Owner-tier ones tell Sibu who is asking to
+    // sell below cost, which is the exception that matters most.
+    const [belowRate] = await pool.query(
+      `SELECT rc.requested_by, u.name AS requested_by_name, rc.tier, COUNT(*) AS n
+         FROM item_rate_changes rc
+         LEFT JOIN users u ON u.id = rc.requested_by
+        WHERE DATE(rc.requested_at) = ? AND rc.tier IN ('auto','sibu','owner')
+          AND rc.status IN ('auto_approved','pending','approved','rejected')
+        GROUP BY rc.requested_by, u.name, rc.tier
+        ORDER BY rc.requested_by`,
+      [day]
+    );
+
+    // 3.3 — every credit/overdue override used today, for the same reason:
+    // an exception report exists to catch what a block quietly getting
+    // lifted would otherwise hide.
+    const [overrides] = await pool.query(
+      `SELECT oo.kind, oo.overridden_by, u.name AS overridden_by_name, COUNT(*) AS n
+         FROM order_overrides oo
+         JOIN orders o ON o.order_id = oo.order_id
+         LEFT JOIN users u ON u.id = oo.overridden_by
+        WHERE o.order_date = ?
+        GROUP BY oo.kind, oo.overridden_by, u.name`,
+      [day]
+    );
+
     res.json({
       date: day,
       invoices: invoiced.invoices,
@@ -726,6 +755,10 @@ router.get('/eod', requirePermission('eod.view'), async (req, res, next) => {
       delivered: deliveries.delivered,
       failed: deliveries.failed,
       closed: closed || null,
+      exceptions: {
+        below_rate_requests: belowRate,
+        credit_overrides: overrides,
+      },
     });
   } catch (err) {
     next(err);

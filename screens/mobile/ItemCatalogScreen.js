@@ -174,11 +174,14 @@ export default function ItemCatalogScreen({ role, user, nav, onBack }) {
       onDone: (result) => {
         setOpenId(null);
         setDraft({});
+        // 3.2 — up to 2% below the current rate auto-applies; anything more
+        // waits on Sibu, and below cost still waits on Yash or Manoj (R-11,
+        // R-16). `result.message` already says which, so it is shown as is.
         showAlert(
-          result?.code === 'RATE_CHANGE_PENDING' ? 'Sent for approval' : 'Saved',
-          result?.code === 'RATE_CHANGE_PENDING'
-            ? 'Gaurav\'s rate edits need Yash or Manoj to approve — R-11. It will show once decided.'
-            : 'Updated.'
+          result?.code === 'RATE_CHANGE_APPLIED' ? 'Adjusted'
+            : result?.code === 'RATE_CHANGE_PENDING' ? 'Sent for approval'
+              : 'Saved',
+          result?.message || 'Updated.'
         );
         reload();
       },

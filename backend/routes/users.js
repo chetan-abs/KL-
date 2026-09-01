@@ -54,7 +54,7 @@ router.patch('/:id/permissions', requirePermission(PERMISSION_GRANT), async (req
 
 router.post('/', requirePermission('employees.create'), async (req, res) => {
   const {
-    id, name, email, phone, address, city, state, role = 'employee', password, permissions = [],
+    id, name, email, phone, address, city, state, role = 'employee', title, password, permissions = [],
     shift_code, fixed_salary, geofenced,
   } = req.body || {};
   if (!id?.trim() || !name?.trim()) {

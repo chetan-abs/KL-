@@ -51,6 +51,38 @@ const RATE_WRITABLE = [
 const approvesRates = (user) => userCan(user, 'all');
 
 /**
+ * Section 3.2, September 2026 — "Selling below the rate — approval slabs".
+ * CHANGED FROM v1, which sent every proposed rate to an owner regardless of
+ * size. Only a DECREASE to `base_price` is tiered this way; every other
+ * pricing field (discount ladders, ratios, commission, cost_price itself)
+ * keeps the original owner-only rule, because "below the rate" specifically
+ * means the price a party is charged, not the levers that compute it.
+ *
+ *   up to 2% below the current rate   auto        logged, EOD exception report
+ *   more than 2% below                sibu        Sibu, or an owner
+ *   below cost (R-16)                 owner       Yash or Manoj only
+ *
+ * `rate_variance.approve` is the grant Sibu holds for the middle tier — a
+ * grant rather than a name check, same reasoning as R-11's own comment: a
+ * rule naming a duty should be satisfiable by handing somebody that duty, but
+ * the OWNER tier stays wildcard-only on purpose, same as R-11 and R-16 always
+ * have been.
+ */
+const TIER_RANK = { auto: 0, sibu: 1, owner: 2 };
+
+function tierFor(field, current, next, costPrice) {
+  if (field !== 'base_price' || current === null || next === null || next >= current) {
+    return { tier: 'owner', variance: null };
+  }
+  const variance = Number((((current - next) / current) * 100).toFixed(2));
+  if (costPrice !== null && next < costPrice) return { tier: 'owner', variance };
+  if (variance > 2) return { tier: 'sibu', variance };
+  return { tier: 'auto', variance };
+}
+
+const approvesVariance = (user) => approvesRates(user) || userCan(user, 'rate_variance.approve');
+
+/**
  * POST /api/items/import — upload a rate-card spreadsheet from the app.
  *
  * "I upload the excel, they fetch the data and add to the table, and always
@@ -159,6 +191,8 @@ async function proposeRateChange(itemId, fields, body, user) {
     }
 
     const batch = `RC${Date.now().toString(36).toUpperCase()}`;
+    const costPrice = item.cost_price === null || item.cost_price === undefined
+      ? null : Number(item.cost_price);
     const changes = [];
 
     for (const field of fields) {
@@ -174,18 +208,8 @@ async function proposeRateChange(itemId, fields, body, user) {
       // queue free of rows that would change nothing when approved.
       if (current === next) continue;
 
-      await conn.query(
-        `UPDATE item_rate_changes SET status = 'superseded'
-          WHERE item_id = ? AND field = ? AND status = 'pending'`,
-        [itemId, field]);
-
-      await conn.query(
-        `INSERT INTO item_rate_changes
-           (item_id, item_name, field, old_value, new_value, batch_ref, reason, requested_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [itemId, item.name, field, current, next, batch, body.reason || null, user.id]);
-
-      changes.push({ field, from: current, to: next });
+      const { tier, variance } = tierFor(field, current, next, costPrice);
+      changes.push({ field, from: current, to: next, tier, variance });
     }
 
     if (!changes.length) {
@@ -193,12 +217,59 @@ async function proposeRateChange(itemId, fields, body, user) {
       return { error: 'Those values are already set. Nothing to approve.', status: 400, code: 'NO_CHANGE' };
     }
 
-    for (const owner of await usersWhoCan(conn, 'all')) {
+    // A batch is only as lenient as its strictest row — one field needing an
+    // owner escalates the whole submission, because approving "the batch"
+    // half-tiered would apply some fields on a lower bar than the person
+    // deciding realised they were signing off on.
+    const batchTier = changes.reduce(
+      (worst, c) => (TIER_RANK[c.tier] > TIER_RANK[worst] ? c.tier : worst), 'auto');
+    const autoApply = batchTier === 'auto';
+
+    for (const c of changes) {
+      await conn.query(
+        `UPDATE item_rate_changes SET status = 'superseded'
+          WHERE item_id = ? AND field = ? AND status = 'pending'`,
+        [itemId, c.field]);
+
+      if (autoApply) {
+        if (!RATE_WRITABLE.includes(c.field)) {
+          await conn.rollback();
+          return { error: `${c.field} is not a rate column.`, status: 400, code: 'BAD_FIELD' };
+        }
+        await conn.query(`UPDATE items SET ${c.field} = ? WHERE masterid = ?`, [c.to, itemId]);
+      }
+
+      await conn.query(
+        `INSERT INTO item_rate_changes
+           (item_id, item_name, field, tier, variance_percent, old_value, new_value,
+            batch_ref, reason, requested_by, status, decided_by, decided_at,
+            decision_note, applied_from)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [itemId, item.name, c.field, c.tier, c.variance, c.from, c.to, batch,
+          body.reason || null, user.id,
+          autoApply ? 'auto_approved' : 'pending',
+          autoApply ? null : null,
+          autoApply ? new Date() : null,
+          autoApply ? `Auto-approved — ${c.variance}% below rate, within the 2% band.` : null,
+          autoApply ? c.from : null]);
+    }
+
+    // Everyone who could act on this hears about it either way — an
+    // auto-applied change is still "logged" per 3.2, and a pending one is
+    // waiting on Sibu or an owner depending on batchTier.
+    const recipients = batchTier === 'sibu'
+      ? new Set([...await usersWhoCan(conn, 'all'), ...await usersWhoCan(conn, 'rate_variance.approve')])
+      : new Set(await usersWhoCan(conn, 'all'));
+
+    for (const recipient of recipients) {
       await notify(conn, {
-        userId: owner,
-        tone: 'warning',
-        title: `Rate change proposed — ${item.name}`,
-        body: changes.map((c) => `${c.field}: ${c.from} → ${c.to}`).join('; ')
+        userId: recipient,
+        tone: autoApply ? 'info' : 'warning',
+        title: autoApply
+          ? `Rate auto-adjusted — ${item.name}`
+          : `Rate change proposed — ${item.name}`,
+        body: changes.map((c) => `${c.field}: ${c.from} → ${c.to}`
+          + (c.variance !== null ? ` (${c.variance}% below rate)` : '')).join('; ')
           + ` (${user.name})`,
         actor: user.id,
         refType: 'rate_change',
@@ -207,7 +278,10 @@ async function proposeRateChange(itemId, fields, body, user) {
     }
 
     await conn.commit();
-    return { batch_ref: batch, changes, item_id: Number(itemId), item_name: item.name };
+    return {
+      batch_ref: batch, changes, item_id: Number(itemId), item_name: item.name,
+      tier: batchTier, auto_applied: autoApply,
+    };
   } catch (err) {
     await conn.rollback();
     throw err;
@@ -236,7 +310,9 @@ router.get('/rate-changes', requirePermission('items.rates'), async (req, res, n
         ORDER BY rc.requested_at DESC, rc.id DESC
         LIMIT 300`, [status]);
 
-    // Grouped by submission, because that is what gets approved.
+    // Grouped by submission, because that is what gets approved. A batch's
+    // own required tier is the strictest of its rows, same rule proposeRateChange
+    // uses to decide whether it auto-applied.
     const batches = new Map();
     for (const r of rows) {
       const key = r.batch_ref || `single-${r.id}`;
@@ -249,18 +325,26 @@ router.get('/rate-changes', requirePermission('items.rates'), async (req, res, n
           requested_at: r.requested_at,
           reason: r.reason,
           status: r.status,
+          tier: 'auto',
           changes: [],
         });
       }
-      batches.get(key).changes.push({
+      const entry = batches.get(key);
+      if (TIER_RANK[r.tier] > TIER_RANK[entry.tier]) entry.tier = r.tier;
+      entry.changes.push({
         id: r.id, field: r.field, from: r.old_value, to: r.new_value,
+        tier: r.tier, variance_percent: r.variance_percent,
       });
     }
 
     res.json({
       status,
-      batches: [...batches.values()],
+      batches: [...batches.values()].map((b) => ({
+        ...b,
+        can_decide: b.tier === 'owner' ? approvesRates(req.user) : approvesVariance(req.user),
+      })),
       can_approve: approvesRates(req.user),
+      can_approve_variance: approvesVariance(req.user),
     });
   } catch (err) { next(err); }
 });
@@ -274,13 +358,6 @@ router.get('/rate-changes', requirePermission('items.rates'), async (req, res, n
  * between, and the difference is exactly what an audit would ask about.
  */
 router.post('/rate-changes/:batch/decide', async (req, res, next) => {
-  if (!approvesRates(req.user)) {
-    return res.status(403).json({
-      error: 'A rate adjustment is approved by Yash or Manoj only.',
-      code: 'RATE_APPROVAL_DENIED',
-    });
-  }
-
   const conn = await pool.getConnection();
   try {
     const approve = req.body?.approve === true || req.body?.approve === 'true';
@@ -294,6 +371,22 @@ router.post('/rate-changes/:batch/decide', async (req, res, next) => {
       await conn.rollback();
       return res.status(404).json({
         error: 'No pending rate change with that reference.', code: 'NOT_FOUND' });
+    }
+
+    // 3.2 — a batch needs the strictest tier any of its rows carries. Sibu
+    // (via `rate_variance.approve`) may clear a 'sibu' batch; only Yash or
+    // Manoj may clear an 'owner' one — unchanged from R-11/R-16.
+    const batchTier = rows.reduce(
+      (worst, r) => (TIER_RANK[r.tier] > TIER_RANK[worst] ? r.tier : worst), 'auto');
+    const authorized = batchTier === 'owner' ? approvesRates(req.user) : approvesVariance(req.user);
+    if (!authorized) {
+      await conn.rollback();
+      return res.status(403).json({
+        error: batchTier === 'owner'
+          ? 'A rate adjustment below cost is approved by Yash or Manoj only.'
+          : 'This rate adjustment needs Sibu or an owner to approve it.',
+        code: 'RATE_APPROVAL_DENIED',
+      });
     }
 
     const applied = [];
@@ -617,10 +710,16 @@ router.put('/:id', async (req, res, next) => {
 
         // If the caller sent ONLY rate fields there is nothing left to save, so
         // the response is about the request rather than about the item.
+        //
+        // 3.2 — a within-2%-below decrease auto-applies (see tierFor above),
+        // so this is sometimes reporting a change that already happened, not
+        // one still waiting on somebody.
         if (!updates.length) {
-          return res.status(202).json({
-            message: 'Rate change submitted for approval.',
-            code: 'RATE_CHANGE_PENDING',
+          return res.status(pending.auto_applied ? 200 : 202).json({
+            message: pending.auto_applied
+              ? 'Rate adjusted — within 2% of the current rate, auto-approved and logged.'
+              : `Rate change submitted for approval (${pending.tier === 'sibu' ? 'Sibu' : 'Yash or Manoj'}).`,
+            code: pending.auto_applied ? 'RATE_CHANGE_APPLIED' : 'RATE_CHANGE_PENDING',
             ...pending,
           });
         }

@@ -38,7 +38,7 @@ function signToken(user) {
 
 // Columns every authenticated request needs. `password` is never selected here
 // so a hash cannot leak through a handler that returns req.user wholesale.
-const USER_FIELDS = 'id, name, email, phone, role, permissions, address, city, state, is_active, '
+const USER_FIELDS = 'id, name, email, phone, role, title, permissions, address, city, state, is_active, '
   + 'must_change_password, shift_code, fixed_salary, geofenced';
 
 /**

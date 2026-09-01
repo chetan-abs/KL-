@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
-import { useTheme, useThemeColors } from '../../context/ThemeContext';
+import { useThemeColors } from '../../context/ThemeContext';
 import { WILDCARD } from '../../constants/permissions';
 import { userCan } from '../../utils/permissions';
 import { API_BASE_URL } from '../../services/api';
@@ -14,12 +14,6 @@ import DetailRow from '../../components/mobile/DetailRow';
 import Avatar from '../../components/mobile/Avatar';
 import Badge from '../../components/mobile/Badge';
 import ActionButton from '../../components/mobile/ActionButton';
-
-const THEME_OPTIONS = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'System' },
-];
 
 /**
  * The account screen every role carries.
@@ -38,7 +32,6 @@ export default function ProfileScreen({
   onOpenChangePassword, onOpenPasswordRequests,
 }) {
   const COLORS = useThemeColors();
-  const { preference, setTheme } = useTheme();
   const styles = React.useMemo(() => StyleSheet.create({
     flex: { flex: 1 },
     linkRow: {
@@ -54,17 +47,6 @@ export default function ProfileScreen({
     grants: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     link: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     meta: { marginTop: 3 },
-    themeRow: { flexDirection: 'row', gap: 8, padding: 14 },
-    themeChip: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: 9,
-      borderWidth: 1,
-      borderColor: COLORS.border,
-      backgroundColor: COLORS.surface,
-      alignItems: 'center',
-    },
-    themeChipOn: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
   }), [COLORS]);
 
   const granted = React.useMemo(() => {
@@ -96,31 +78,6 @@ export default function ProfileScreen({
             <AppText weight="bold" size="lg">{user?.name || role.name}</AppText>
             <AppText size="sm" color={COLORS.textSecondary}>{role.title}</AppText>
           </View>
-        </View>
-      </Card>
-
-      {/* The device already carries its owner's own light/dark choice for
-          every other app; "System" (the default) is what respects that
-          instead of silently overriding it for this one app alone. */}
-      <Card title="Appearance" flush>
-        <View style={styles.themeRow}>
-          {THEME_OPTIONS.map((opt) => {
-            const on = preference === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.themeChip, on ? styles.themeChipOn : null]}
-                onPress={() => setTheme(opt.value)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
-                accessibilityLabel={`${opt.label} theme`}
-              >
-                <AppText weight={on ? 'bold' : 'regular'} size="sm" color={on ? COLORS.white : COLORS.text}>
-                  {opt.label}
-                </AppText>
-              </TouchableOpacity>
-            );
-          })}
         </View>
       </Card>
 

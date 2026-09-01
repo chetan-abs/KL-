@@ -156,7 +156,9 @@ router.get('/:id', requirePermission('orders.view'), async (req, res, next) => {
  *   · the submitting salesman's GPS fix is stamped on and cannot be edited
  *     afterwards (R-26)
  *   · a similar order in the last 24 hours must be acknowledged
- *   · a party 60 days overdue produces a warning, never a block (R-17)
+ *   · a party 60 days overdue, or one this order would push over its credit
+ *     limit, is blocked at punch — CHANGED FROM v1's notification-only R-17;
+ *     only Yash or Manoj may override, and every override is logged
  */
 router.post('/', requirePermission('orders.create'), async (req, res, next) => {
   try {
@@ -461,6 +463,62 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         }
       }
 
+      // ---- 3.3 credit limit and 60-day overdue — CHANGED FROM v1 ----------
+      // v1 let both proceed with a notification only (see the old R-16/R-17
+      // comments below). The September 2026 sheet makes each a hard block at
+      // punch, liftable only by Yash or Manoj, and every lift is logged —
+      // `order_overrides` is that log. Skipped for a dealer's own retail
+      // self-purchase style checks are unaffected: this reads the PARTY's
+      // credit, not the line rates.
+      const [[overdueRow]] = await conn.query(
+        `SELECT COALESCE(SUM(grand_total - amount_paid), 0) AS amount, COUNT(*) AS invoices,
+                MIN(invoice_date) AS oldest_date
+           FROM invoices
+          WHERE customer_id = ? AND settled_on IS NULL AND status <> 'cancelled'
+            AND invoice_date < (CURDATE() - INTERVAL 60 DAY)`,
+        [customer_id],
+      );
+      const overdue60 = Number(overdueRow.amount) > 0
+        ? { amount: Number(overdueRow.amount), invoices: overdueRow.invoices, oldest_date: overdueRow.oldest_date }
+        : null;
+
+      const creditLimit = Number(customer.credit_limit) || 0;
+      const usedBefore = Number(customer.closing_balance) || 0;
+      const projected = money(usedBefore + grandTotal);
+      const overLimit = creditLimit > 0 && projected > creditLimit;
+
+      const tripped = [];
+      if (overLimit) tripped.push('credit_limit');
+      if (overdue60) tripped.push('overdue_60');
+
+      // "Override by Yash or Papa only" — the same wildcard-only bar R-11
+      // and R-16 already use for an owner decision. Read once here so the
+      // write section below can log it without re-deriving the same check.
+      const overrideRequested = req.body?.override === true || req.body?.override === 'true';
+      const canOverride = userCan(req.user, 'all');
+
+      if (tripped.length) {
+        if (!(overrideRequested && canOverride)) {
+          await conn.rollback();
+          return res.status(409).json({
+            error: overLimit
+              ? `${customer.name} would cross their credit limit of ₹${creditLimit.toFixed(2)} `
+                + `(already using ₹${usedBefore.toFixed(2)}, this order adds ₹${grandTotal.toFixed(2)}). `
+                + 'Only Yash or Manoj can override this at punch.'
+              : `${customer.name} has ₹${overdue60.amount.toFixed(2)} overdue beyond 60 days `
+                + `across ${overdue60.invoices} invoice(s). Only Yash or Manoj can override this at punch.`,
+            code: overLimit ? 'CREDIT_LIMIT_EXCEEDED' : 'OVERDUE_60_BLOCK',
+            party_info: {
+              credit_limit: creditLimit,
+              used: usedBefore,
+              free: Math.max(0, creditLimit - usedBefore),
+              order_total: grandTotal,
+              overdue_60: overdue60,
+            },
+          });
+        }
+      }
+
       // ---- the place name (D.2) -------------------------------------------
       // "Name of the location or nearest landmark (reverse geocoded from
       // coordinates)". A server-side geocode is stronger evidence than a string
@@ -583,15 +641,27 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         }
       }
 
-      // R-17: a 60-day overdue balance is reported back with the order, for
-      // the salesman to see and management to decide on. Not a block.
-      const [[overdue]] = await conn.query(
-        `SELECT COALESCE(SUM(grand_total - amount_paid), 0) AS amount, COUNT(*) AS invoices
-           FROM invoices
-          WHERE customer_id = ? AND settled_on IS NULL AND status <> 'cancelled'
-            AND invoice_date < (CURDATE() - INTERVAL 60 DAY)`,
-        [customer_id],
-      );
+      // 3.3 — every override actually used is logged, one row per kind
+      // tripped, so "who let this through and why" is answerable later.
+      if (tripped.length && overrideRequested && canOverride) {
+        for (const kind of tripped) {
+          await conn.query(
+            `INSERT INTO order_overrides (order_id, kind, overridden_by, note)
+             VALUES (?, ?, ?, ?)`,
+            [orderId, kind, req.user.id, req.body?.override_note || null]);
+        }
+        for (const approver of await usersWhoCan(conn, 'orders.approve')) {
+          await notify(conn, {
+            userId: approver,
+            tone: 'warning',
+            title: `Credit override on ${soNumber}`,
+            body: `${req.user.name} overrode ${tripped.join(' and ')} for ${customer.name}.`,
+            actor: req.user.id,
+            refType: 'order',
+            refId: orderId,
+          });
+        }
+      }
 
       await conn.commit();
 
@@ -606,9 +676,8 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         below_cost: belowCostLines,
         gps_place: located.place,
         gps_place_source: located.source,
-        overdue_60: Number(overdue.amount) > 0
-          ? { amount: Number(overdue.amount), invoices: overdue.invoices }
-          : null,
+        overdue_60: overdue60,
+        credit_overridden: tripped.length ? tripped : null,
       });
     } catch (e) {
       await conn.rollback();

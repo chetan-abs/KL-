@@ -5,6 +5,7 @@ import { useThemeColors } from '../../context/ThemeContext';
 import { Orders, Items, Customers } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
+import { formatDate } from '../../utils/datetime';
 import { confirmAction, showAlert } from '../../services/confirm';
 import AppText from '../../components/AppText';
 import Screen from '../../components/mobile/Screen';
@@ -55,6 +56,14 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
   const [notes, setNotes] = React.useState('');
   const [picking, setPicking] = React.useState(null);
 
+  // 3.3 — the Party Information Card. Fetched the moment a party is chosen,
+  // so a blocked credit limit or a 60-day overdue balance is obvious before
+  // a whole order is filled in, not only inside the 409 a punch returns.
+  const creditStatus = useApi(
+    () => (customerId ? Customers.creditStatus(customerId) : Promise.resolve(null)),
+    [customerId]
+  );
+
   const party = (parties.data?.customers || []).find((c) => c.masterid === customerId);
   const catalogue = (items.data?.items || []).map((i) => ({
     value: i.masterid,
@@ -92,32 +101,58 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
 
   const subTotal = rows.reduce((sum, r) => sum + r.net, 0);
   const gstTotal = rows.reduce((sum, r) => sum + r.gstAmount, 0);
+  const grandTotal = subTotal + gstTotal;
 
-  const credit = party ? Number(party.credit_limit) - Number(party.closing_balance) : 0;
-  const overLimit = party && subTotal + gstTotal > credit;
+  const info = creditStatus.data;
+  const projectedFree = info ? info.free - grandTotal : null;
+  const willCrossLimit = info && info.credit_limit > 0 && projectedFree < 0;
+  const willBlock = willCrossLimit || info?.overdue_60;
 
   const ready = customerId && rows.length > 0 && rows.every((r) => Number(r.qty) > 0);
 
-  const create = useAction(
-    () =>
-      Orders.create({
-        customer_id: customerId,
-        items: rows.map((r) => ({
-          item_id: r.item_id,
-          qty: Number(r.qty),
-          discount: Number(r.discount) || 0,
-          scheme: Number(r.scheme) || 0,
-        })),
-        notes: notes.trim(),
-      }),
-    {
-      onDone: (result) => {
-        showAlert('Order placed', `Sent for approval — ${rupees(result.total_amount)}.`);
-        onSaved?.();
-      },
-      onFail: (message) => showAlert('Could not place', message),
-    }
-  );
+  // 3.3 — CHANGED FROM v1: both are a hard block at punch now, not a
+  // notification. `override` is only ever sent when the block already fired
+  // once and an owner chose to clear it — never speculatively.
+  const punch = (override) =>
+    Orders.create({
+      customer_id: customerId,
+      items: rows.map((r) => ({
+        item_id: r.item_id,
+        qty: Number(r.qty),
+        discount: Number(r.discount) || 0,
+        scheme: Number(r.scheme) || 0,
+      })),
+      notes: notes.trim(),
+      ...(override ? { override: true, override_note: 'Overridden at punch by ' + role.name } : {}),
+    });
+
+  const create = useAction(() => punch(false), {
+    onDone: (result) => {
+      showAlert('Order placed', `Sent for approval — ${rupees(result.total_amount)}.`);
+      onSaved?.();
+    },
+    onFail: (message, err) => {
+      const code = err?.response?.data?.code;
+      const blocked = code === 'CREDIT_LIMIT_EXCEEDED' || code === 'OVERDUE_60_BLOCK';
+      if (blocked && role.isOwner) {
+        confirmAction(
+          'Override and place anyway?',
+          `${message}\n\nThis will be logged against your name.`,
+          () => override.run()
+        );
+        return;
+      }
+      showAlert(blocked ? 'Blocked' : 'Could not place', message);
+    },
+  });
+
+  const override = useAction(() => punch(true), {
+    onDone: (result) => {
+      showAlert('Order placed (overridden)', `Sent for approval — ${rupees(result.total_amount)}.`);
+      onSaved?.();
+    },
+    onFail: (message) => showAlert('Could not place', message),
+  });
 
   const noOrder = useAction(
     () => Orders.create({ customer_id: customerId, items: [], is_no_order: true, notes: notes.trim() }),
@@ -148,16 +183,16 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
       footer={
         <>
           <ActionButton
-            label={ready ? `Send for approval · ${rupees(subTotal + gstTotal)}` : 'Add a party and items'}
+            label={ready ? `Send for approval · ${rupees(grandTotal)}` : 'Add a party and items'}
             tone="brand"
             disabled={!ready}
-            loading={create.busy}
+            loading={create.busy || override.busy}
             loadingLabel="Placing"
             onPress={() =>
               confirmAction(
                 'Send this order for approval?',
-                `${party.name} — ${rupees(subTotal + gstTotal)}.${
-                  overLimit ? ' This is over their available credit and Manas will see that.' : ''
+                `${party.name} — ${rupees(grandTotal)}.${
+                  willBlock ? ' This will be blocked at punch — the server has the final word.' : ''
                 }`,
                 create.run
               )
@@ -200,21 +235,42 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
           />
         </Card>
 
-        {party ? (
-          <Card flush>
-            <DetailRow label="Outstanding" value={rupees(party.closing_balance)} />
+        {/* 3.3 — the Party Information Card, shown before the order is
+            saved: credit limit, used, free, last order date, outstanding
+            and the age of the oldest bill. */}
+        {party && info ? (
+          <Card title="Party Information" flush>
+            <DetailRow label="Credit limit" value={rupees(info.credit_limit)} />
+            <DetailRow label="Used" value={rupees(info.used)} />
             <DetailRow
-              label="Credit available"
-              value={rupees(credit)}
-              tone={credit > 0 ? 'success' : 'danger'}
+              label="Free"
+              value={rupees(info.free)}
+              tone={info.free > 0 ? 'success' : 'danger'}
+            />
+            <DetailRow label="Outstanding" value={rupees(info.outstanding)} />
+            <DetailRow
+              label="Oldest bill"
+              value={info.oldest_bill_days === null ? 'None outstanding' : `${info.oldest_bill_days} days`}
+              tone={info.overdue_60 ? 'danger' : 'muted'}
+            />
+            <DetailRow
+              label="Last order"
+              value={info.last_order_date ? formatDate(info.last_order_date) : 'No prior order'}
               last
             />
           </Card>
         ) : null}
 
-        {overLimit ? (
+        {willCrossLimit ? (
           <NoticeBar tone="danger">
-            {`This order is ${rupees(subTotal + gstTotal - credit)} over their available credit. Manas will have to clear it.`}
+            {`This order is ${rupees(-projectedFree)} over the party's credit limit. `
+              + (role.isOwner ? 'You can override this at punch.' : 'Only Yash or Manoj can override this at punch.')}
+          </NoticeBar>
+        ) : null}
+        {info?.overdue_60 ? (
+          <NoticeBar tone="danger">
+            {`${party?.name || 'This party'} has ${info.outstanding_invoices} invoice(s) more than 60 days overdue. `
+              + (role.isOwner ? 'You can override this at punch.' : 'Only Yash or Manoj can override this at punch.')}
           </NoticeBar>
         ) : null}
 

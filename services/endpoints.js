@@ -273,6 +273,13 @@ export const Customers = {
    */
   create: (payload) => body(api.post('/customers', payload)),
   update: (id, payload) => body(api.put(`/customers/${id}`, payload)),
+  /**
+   * The Party Information Card (3.3) — credit limit, used, free, last order
+   * date, outstanding and the age of the oldest bill. Fetched before an order
+   * is punched so a blocked party is obvious before the salesman fills in a
+   * whole order, not only inside the 409 the punch itself would return.
+   */
+  creditStatus: (id) => body(api.get(`/customers/${id}/credit-status`)),
 };
 
 export const Users = {
