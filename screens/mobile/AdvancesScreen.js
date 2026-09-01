@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Payroll } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -39,6 +39,17 @@ const STATUS_TONE = {
 };
 
 export default function AdvancesScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  tabs: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1 },
+  row: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  progress: { marginTop: 8, gap: 4 },
+  decide: { flexDirection: 'row', gap: 8, marginTop: 10 },
+}), [COLORS]);
   const [tab, setTab] = React.useState('advances');
 
   const advances = useApi(() => Payroll.advances(), []);
@@ -281,13 +292,3 @@ export default function AdvancesScreen({ role, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row', gap: 10 },
-  half: { flex: 1 },
-  row: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  progress: { marginTop: 8, gap: 4 },
-  decide: { flexDirection: 'row', gap: 8, marginTop: 10 },
-});

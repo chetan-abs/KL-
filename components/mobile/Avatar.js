@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -18,7 +18,7 @@ function initialsOf(name = '') {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-function colorOf(name = '') {
+function colorOf(name = '', COLORS) {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) {
     hash = (hash * 31 + name.charCodeAt(i)) % 100000;
@@ -27,6 +27,10 @@ function colorOf(name = '') {
 }
 
 export default function Avatar({ name, label, color, size = 40, style }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  disc: { alignItems: 'center', justifyContent: 'center' },
+}), [COLORS]);
   const text = label || initialsOf(name);
 
   return (
@@ -37,7 +41,7 @@ export default function Avatar({ name, label, color, size = 40, style }) {
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: color || colorOf(name || text),
+          backgroundColor: color || colorOf(name || text, COLORS),
         },
         style,
       ]}
@@ -49,6 +53,3 @@ export default function Avatar({ name, label, color, size = 40, style }) {
   );
 }
 
-const styles = StyleSheet.create({
-  disc: { alignItems: 'center', justifyContent: 'center' },
-});

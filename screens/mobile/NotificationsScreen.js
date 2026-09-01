@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Alerts } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { relativeTime } from '../../utils/datetime';
@@ -27,14 +27,29 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * A broadcast (user_id NULL) reaches everyone; a targeted alert reaches one
  * person. Both arrive here — the server's WHERE clause decides which.
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   danger: { row: COLORS.errorRow, badge: 'danger' },
   warning: { row: COLORS.warningRow, badge: 'pending' },
   info: { row: COLORS.infoRow, badge: 'info' },
   success: { row: COLORS.successRow, badge: 'success' },
 };
+}
 
 export default function NotificationsScreen({ role, nav, onRefreshBadge }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  row: { flexDirection: 'row', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.primary, marginTop: 6 },
+  dotRead: { backgroundColor: COLORS.transparent },
+  body: { flex: 1, paddingLeft: 11 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  meta: { marginTop: 3, lineHeight: 18 },
+  badge: { marginTop: 8 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh, setData } = useApi(
     () => Alerts.list({ limit: 60 }),
     []
@@ -148,14 +163,4 @@ export default function NotificationsScreen({ role, nav, onRefreshBadge }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  row: { flexDirection: 'row', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.primary, marginTop: 6 },
-  dotRead: { backgroundColor: COLORS.transparent },
-  body: { flex: 1, paddingLeft: 11 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  meta: { marginTop: 3, lineHeight: 18 },
-  badge: { marginTop: 8 },
-});
+

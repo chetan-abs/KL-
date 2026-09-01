@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Transfers } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/datetime';
@@ -36,6 +36,16 @@ const STATUS_TONE = {
 };
 
 export default function TransfersScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  line: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, gap: 10 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  qty: { width: 90 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
+}), [COLORS]);
   const [open, setOpen] = React.useState(null);   // transfer id being received
   const [counts, setCounts] = React.useState({}); // line id → typed quantity
 
@@ -208,12 +218,3 @@ export default function TransfersScreen({ role, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  line: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  qty: { width: 90 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-});

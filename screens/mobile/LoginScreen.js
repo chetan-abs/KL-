@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import AppText from '../../components/AppText';
 import Field from '../../components/mobile/Field';
@@ -35,6 +35,48 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
  * where a credential belongs.
  */
 export default function LoginScreen() {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  page: { flex: 1, backgroundColor: COLORS.background },
+  // White on desktop rather than the app's grey: the card carries the navy
+  // letterhead, and a plain sheet behind it lets that be the only colour on the
+  // page.
+  pageWide: { backgroundColor: COLORS.white },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20 },
+  column: { width: '100%', maxWidth: PHONE_MAX_WIDTH - 40, alignSelf: 'center' },
+
+  card: {
+    borderRadius: 18,
+    // Clips the flat navy banner to the card's corners; without it the square
+    // punches back out through the radius.
+    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  banner: {
+    backgroundColor: COLORS.brand,
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 28,
+    paddingBottom: 26,
+  },
+  brand: { letterSpacing: 0.6, textAlign: 'center' },
+  place: { marginTop: 5, textAlign: 'center' },
+
+  sheet: { paddingHorizontal: 22, paddingTop: 22, paddingBottom: 24 },
+  spaced: { marginTop: 15 },
+  notice: { marginTop: 14 },
+  submit: { marginTop: 20 },
+
+  help: { marginTop: 16, textAlign: 'center' },
+
+}), [COLORS]);
   const { signIn } = useAuth();
   const insets = useSafeAreaInsets();
   const { isDesktop } = useBreakpoint();
@@ -153,44 +195,3 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: COLORS.background },
-  // White on desktop rather than the app's grey: the card carries the navy
-  // letterhead, and a plain sheet behind it lets that be the only colour on the
-  // page.
-  pageWide: { backgroundColor: COLORS.white },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  column: { width: '100%', maxWidth: PHONE_MAX_WIDTH - 40, alignSelf: 'center' },
-
-  card: {
-    borderRadius: 18,
-    // Clips the flat navy banner to the card's corners; without it the square
-    // punches back out through the radius.
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: COLORS.text,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
-  },
-  banner: {
-    backgroundColor: COLORS.brand,
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingTop: 28,
-    paddingBottom: 26,
-  },
-  brand: { letterSpacing: 0.6, textAlign: 'center' },
-  place: { marginTop: 5, textAlign: 'center' },
-
-  sheet: { paddingHorizontal: 22, paddingTop: 22, paddingBottom: 24 },
-  spaced: { marginTop: 15 },
-  notice: { marginTop: 14 },
-  submit: { marginTop: 20 },
-
-  help: { marginTop: 16, textAlign: 'center' },
-
-});

@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -20,6 +20,32 @@ export default function PhotoBox({
   onPress,
   style,
 }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  box: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 11,
+    paddingVertical: 26,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  compact: {
+    flexDirection: 'row',
+    gap: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 9,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  empty: { borderColor: COLORS.successBorder, backgroundColor: COLORS.successRow },
+  captured: { borderColor: COLORS.success, backgroundColor: COLORS.successSurface, borderStyle: 'solid' },
+  title: { marginTop: 6, textAlign: 'center' },
+  caption: { marginTop: 3, textAlign: 'center' },
+}), [COLORS]);
   return (
     <TouchableOpacity
       style={[
@@ -50,28 +76,3 @@ export default function PhotoBox({
   );
 }
 
-const styles = StyleSheet.create({
-  box: {
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 11,
-    paddingVertical: 26,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  compact: {
-    flexDirection: 'row',
-    gap: 8,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 9,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  empty: { borderColor: COLORS.successBorder, backgroundColor: COLORS.successRow },
-  captured: { borderColor: COLORS.success, backgroundColor: COLORS.successSurface, borderStyle: 'solid' },
-  title: { marginTop: 6, textAlign: 'center' },
-  caption: { marginTop: 3, textAlign: 'center' },
-});

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -16,6 +16,26 @@ import AppText from '../AppText';
  * the second option already uses.
  */
 export default function ChoiceCards({ options = [], value, onChange, style }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', gap: 11 },
+  tile: {
+    flex: 1,
+    // Carried at the selected weight in both states, recoloured rather than
+    // thickened — a border that grows on selection reflows the tile's contents
+    // and nudges its neighbour sideways.
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: 11,
+    backgroundColor: COLORS.surface,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  glyph: { marginBottom: 5 },
+  label: { textAlign: 'center' },
+  caption: { marginTop: 3, textAlign: 'center' },
+}), [COLORS]);
   return (
     <View style={[styles.row, style]}>
       {options.map((option) => {
@@ -55,22 +75,3 @@ export default function ChoiceCards({ options = [], value, onChange, style }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 11 },
-  tile: {
-    flex: 1,
-    // Carried at the selected weight in both states, recoloured rather than
-    // thickened — a border that grows on selection reflows the tile's contents
-    // and nudges its neighbour sideways.
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    borderRadius: 11,
-    backgroundColor: COLORS.surface,
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-  },
-  glyph: { marginBottom: 5 },
-  label: { textAlign: 'center' },
-  caption: { marginTop: 3, textAlign: 'center' },
-});

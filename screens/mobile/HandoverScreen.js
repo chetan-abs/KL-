@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Cash } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -39,7 +39,23 @@ const STATUS_TONE = {
   disputed: 'danger',
 };
 
+/** Colorless — the same for either theme, so no useMemo/COLORS dependency. */
+const totalStyle = { alignItems: 'center', gap: 2 };
+
 export default function HandoverScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+    dayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    row: { paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+    head: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+    body: { flex: 1 },
+    meta: { marginTop: 3 },
+    count: { gap: 8 },
+    countField: { marginBottom: 0 },
+    totals: { flexDirection: 'row', justifyContent: 'space-around' },
+  }), [COLORS]);
+
   const [date, setDate] = React.useState(todayString());
 
   const { data, loading, error, refreshing, reload, refresh } = useApi(
@@ -303,23 +319,11 @@ export default function HandoverScreen({ role, nav, onBack }) {
 }
 
 function Total({ label, value, tone }) {
+  const COLORS = useThemeColors();
   return (
-    <View style={styles.total}>
+    <View style={totalStyle}>
       <AppText weight="bold" size="lg" color={tone || COLORS.text}>{rupees(value)}</AppText>
       <AppText size="xs" color={COLORS.textMuted}>{label}</AppText>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  dayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  row: { paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  head: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  count: { gap: 8 },
-  countField: { marginBottom: 0 },
-  totals: { flexDirection: 'row', justifyContent: 'space-around' },
-  total: { alignItems: 'center', gap: 2 },
-});

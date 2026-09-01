@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -12,6 +12,41 @@ import AppText from '../AppText';
  * targets, which is what the mockups show.
  */
 export default function Select({ label, required, value, options = [], onChange, placeholder = 'Select…', style }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  label: { marginBottom: 6 },
+  box: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 46,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 9,
+    paddingHorizontal: 13,
+    backgroundColor: COLORS.surface,
+    gap: 8,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingVertical: 10,
+    paddingBottom: 26,
+  },
+  sheetTitle: { letterSpacing: 0.8, paddingHorizontal: 20, paddingVertical: 10 },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+}), [COLORS]);
   const [open, setOpen] = React.useState(false);
   const selected = options.find((option) => option.value === value);
 
@@ -77,37 +112,3 @@ export default function Select({ label, required, value, options = [], onChange,
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  label: { marginBottom: 6 },
-  box: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 46,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 9,
-    paddingHorizontal: 13,
-    backgroundColor: COLORS.surface,
-    gap: 8,
-  },
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.45)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingVertical: 10,
-    paddingBottom: 26,
-  },
-  sheetTitle: { letterSpacing: 0.8, paddingHorizontal: 20, paddingVertical: 10 },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-  },
-});

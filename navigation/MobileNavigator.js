@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
-import { COLORS } from '../constants/colors';
+import { useThemeColors } from '../context/ThemeContext';
 import { tabsFor, homeFor, titleFor } from '../constants/roles';
 import { userCan } from '../utils/permissions';
 import { useAuth } from '../context/AuthContext';
@@ -85,6 +85,16 @@ const TAB_SCREENS = new Set([
 ]);
 
 export default function MobileNavigator() {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1, backgroundColor: COLORS.background },
+  centre: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+  },
+}), [COLORS]);
   const { status, user, signOut, mustChangePassword } = useAuth();
   const [stack, setStack] = React.useState([]);
   const [unread, setUnread] = React.useState(0);
@@ -447,12 +457,3 @@ export default function MobileNavigator() {
   return <View style={styles.flex}>{render()}</View>;
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: COLORS.background },
-  centre: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.background,
-  },
-});

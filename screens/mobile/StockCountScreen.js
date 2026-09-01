@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { StockCounts } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { formatDateTime } from '../../utils/datetime';
@@ -32,6 +32,15 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * holds its own: the godown has no signal worth a request per keystroke.
  */
 export default function StockCountScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 11 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  varied: { backgroundColor: COLORS.warningRow },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  badge: { marginTop: 6 },
+}), [COLORS]);
   const list = useApi(() => StockCounts.list(), []);
   const open = (list.data?.counts || []).find((c) => c.status === 'open');
 
@@ -203,11 +212,3 @@ export default function StockCountScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 11 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  varied: { backgroundColor: COLORS.warningRow },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  badge: { marginTop: 6 },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet, Linking } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Payroll } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -48,7 +48,34 @@ const STATUS_TONE = {
 /** This month, as YYYY-MM. */
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
+/** Colorless layout the two helper components share — no theme dependency. */
+const figureStyle = { alignItems: 'center', gap: 3 };
+const statStyle = { width: '33%', alignItems: 'center', gap: 2 };
+
 export default function SalaryScreen({ role, nav, onBack, params = {} }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+    monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    total: { alignItems: 'center', paddingVertical: 6 },
+    meta: { marginTop: 3, textAlign: 'center' },
+    split: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: COLORS.borderLight,
+    },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
+    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+    ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+    waived: { backgroundColor: COLORS.surfaceLight },
+    body: { flex: 1 },
+    amount: { alignItems: 'flex-end', gap: 4 },
+    struck: { textDecorationLine: 'line-through' },
+    empty: { padding: 16, alignItems: 'center' },
+  }), [COLORS]);
+
   const employeeId = params.employeeId || role.key;
   const [period, setPeriod] = React.useState(params.period || thisMonth());
 
@@ -270,8 +297,9 @@ export default function SalaryScreen({ role, nav, onBack, params = {} }) {
 }
 
 function Figure({ label, value, tone }) {
+  const COLORS = useThemeColors();
   return (
-    <View style={styles.figure}>
+    <View style={figureStyle}>
       <AppText size="xs" color={COLORS.textMuted}>{label}</AppText>
       <AppText weight="bold" size="sm" color={Number(value) > 0 ? tone : COLORS.text}>
         {Number(value) > 0 ? `− ${rupees(value)}` : rupees(0)}
@@ -281,8 +309,9 @@ function Figure({ label, value, tone }) {
 }
 
 function Stat({ label, value, tone }) {
+  const COLORS = useThemeColors();
   return (
-    <View style={styles.stat}>
+    <View style={statStyle}>
       <AppText weight="bold" size="lg" color={tone || COLORS.text}>
         {value ?? 0}
       </AppText>
@@ -290,27 +319,3 @@ function Stat({ label, value, tone }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  total: { alignItems: 'center', paddingVertical: 6 },
-  meta: { marginTop: 3, textAlign: 'center' },
-  split: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  figure: { alignItems: 'center', gap: 3 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 },
-  stat: { width: '33%', alignItems: 'center', gap: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  waived: { backgroundColor: COLORS.surfaceLight },
-  body: { flex: 1 },
-  amount: { alignItems: 'flex-end', gap: 4 },
-  struck: { textDecorationLine: 'line-through' },
-  empty: { padding: 16, alignItems: 'center' },
-});

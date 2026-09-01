@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { describeError } from '../../services/api';
 import { checkPassword } from '../../utils/password';
@@ -32,6 +32,41 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
  * this exists for are precisely the ones nobody gets round to.
  */
 export default function ForcePasswordScreen() {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  page: { flex: 1, backgroundColor: COLORS.background },
+  pageWide: { backgroundColor: COLORS.white },
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20 },
+  column: { width: '100%', maxWidth: PHONE_MAX_WIDTH - 40, alignSelf: 'center' },
+
+  card: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  banner: {
+    backgroundColor: COLORS.brand,
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 24,
+  },
+  brand: { letterSpacing: 0.4, textAlign: 'center' },
+  place: { marginTop: 5, textAlign: 'center' },
+
+  sheet: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 24 },
+  spaced: { marginTop: 15 },
+  notice: { marginTop: 14 },
+  submit: { marginTop: 20 },
+  signOut: { marginTop: 16 },
+}), [COLORS]);
   const { user, signOut, clearPasswordChange } = useAuth();
   const insets = useSafeAreaInsets();
   const { isDesktop } = useBreakpoint();
@@ -176,37 +211,3 @@ export default function ForcePasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: COLORS.background },
-  pageWide: { backgroundColor: COLORS.white },
-  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  column: { width: '100%', maxWidth: PHONE_MAX_WIDTH - 40, alignSelf: 'center' },
-
-  card: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: COLORS.text,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 4,
-  },
-  banner: {
-    backgroundColor: COLORS.brand,
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingTop: 26,
-    paddingBottom: 24,
-  },
-  brand: { letterSpacing: 0.4, textAlign: 'center' },
-  place: { marginTop: 5, textAlign: 'center' },
-
-  sheet: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 24 },
-  spaced: { marginTop: 15 },
-  notice: { marginTop: 14 },
-  submit: { marginTop: 20 },
-  signOut: { marginTop: 16 },
-});

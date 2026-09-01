@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Items } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { relativeTime } from '../../utils/datetime';
@@ -68,6 +68,16 @@ const TABS = [
 ];
 
 export default function RateChangeScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  reason: { marginTop: 8 },
+  changes: { marginTop: 12, gap: 8 },
+  change: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  fieldName: { flex: 1 },
+  from: { textDecorationLine: 'line-through' },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+}), [COLORS]);
   const [status, setStatus] = React.useState('pending');
 
   const { data, loading, error, refreshing, reload, refresh } = useApi(
@@ -218,12 +228,3 @@ export default function RateChangeScreen({ role, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  reason: { marginTop: 8 },
-  changes: { marginTop: 12, gap: 8 },
-  change: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  fieldName: { flex: 1 },
-  from: { textDecorationLine: 'line-through' },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
-});

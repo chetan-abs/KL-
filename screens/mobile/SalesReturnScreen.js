@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { RETURN_REASONS } from '../../constants/options';
 import { Billing, Returns } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
@@ -31,6 +31,15 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * happened here.
  */
 export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  line: { paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  meta: { marginTop: 4 },
+  reason: { marginTop: 11 },
+}), [COLORS]);
   const invoices = useApi(() => Billing.queue(), []);
   const [invoiceId, setInvoiceId] = React.useState(null);
 
@@ -200,11 +209,4 @@ export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  line: { paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  meta: { marginTop: 4 },
-  reason: { marginTop: 11 },
-});
+

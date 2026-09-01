@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -12,7 +12,8 @@ import AppText from '../AppText';
  * Callers pass a palette key, not a hex, so `tone="danger"` stays right if the
  * red moves.
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   pending: COLORS.warning,
   warning: COLORS.warning,
   success: COLORS.success,
@@ -21,8 +22,24 @@ const TONES = {
   brand: COLORS.brand,
   neutral: COLORS.text,
 };
+}
 
 export default function StatRow({ stats = [], style }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 14,
+  },
+  cell: { flex: 1, alignItems: 'center' },
+  divider: { width: 1, backgroundColor: COLORS.border, marginVertical: 4 },
+  label: { marginTop: 3 },
+}), [COLORS]);
   return (
     <View style={[styles.row, style]}>
       {stats.map((stat, index) => (
@@ -42,16 +59,3 @@ export default function StatRow({ stats = [], style }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 14,
-  },
-  cell: { flex: 1, alignItems: 'center' },
-  divider: { width: 1, backgroundColor: COLORS.border, marginVertical: 4 },
-  label: { marginTop: 3 },
-});

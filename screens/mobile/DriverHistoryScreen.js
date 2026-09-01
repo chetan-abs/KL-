@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Dispatch } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { formatTime } from '../../utils/datetime';
@@ -26,6 +26,14 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * re-schedule.
  */
 export default function DriverHistoryScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1, paddingHorizontal: 11 },
+  meta: { marginTop: 3 },
+  empty: { padding: 22, alignItems: 'center' },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => Dispatch.myRoute(), []);
 
   const stops = data?.stops || [];
@@ -98,10 +106,3 @@ export default function DriverHistoryScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1, paddingHorizontal: 11 },
-  meta: { marginTop: 3 },
-  empty: { padding: 22, alignItems: 'center' },
-});

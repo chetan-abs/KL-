@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -10,7 +10,8 @@ import AppText from '../AppText';
  * for `pending`, never for amber — so the palette can move without a sweep
  * through 27 screens.
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   pending: { bg: COLORS.warningSurface, text: COLORS.warningDark },
   warning: { bg: COLORS.warningSurface, text: COLORS.warningDark },
   danger: { bg: COLORS.errorSurface, text: COLORS.actionRejectDark },
@@ -21,8 +22,20 @@ const TONES = {
   // Set on the navy header, where a tinted fill would disappear.
   onBrand: { bg: 'rgba(255,255,255,0.16)', text: COLORS.white },
 };
+}
 
 export default function Badge({ tone = 'neutral', children, style }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  label: { letterSpacing: 0.4, textTransform: 'uppercase' },
+}), [COLORS]);
   const palette = TONES[tone] || TONES.neutral;
 
   return (
@@ -34,12 +47,3 @@ export default function Badge({ tone = 'neutral', children, style }) {
   );
 }
 
-const styles = StyleSheet.create({
-  pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    alignSelf: 'flex-start',
-  },
-  label: { letterSpacing: 0.4, textTransform: 'uppercase' },
-});

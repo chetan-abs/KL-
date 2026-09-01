@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { UNDELIVERED_REASONS } from '../../constants/options';
 import { Dispatch } from '../../services/endpoints';
 import { useAction } from '../../hooks/useApi';
@@ -38,6 +38,12 @@ import NoticeBar from '../../components/mobile/NoticeBar';
  * stop they have physically completed.
  */
 export default function DeliveryScreen({ role, stop, onBack, onDone, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  spaced: { marginTop: 11 },
+  failPhoto: { marginTop: 11, borderColor: COLORS.border, backgroundColor: COLORS.surfaceLight },
+  failButton: { marginTop: 11 },
+}), [COLORS]);
   const orderId = stop?.order_id;
 
   const [receiver, setReceiver] = React.useState('');
@@ -216,8 +222,4 @@ export default function DeliveryScreen({ role, stop, onBack, onDone, nav}) {
   );
 }
 
-const styles = StyleSheet.create({
-  spaced: { marginTop: 11 },
-  failPhoto: { marginTop: 11, borderColor: COLORS.border, backgroundColor: COLORS.surfaceLight },
-  failButton: { marginTop: 11 },
-});
+

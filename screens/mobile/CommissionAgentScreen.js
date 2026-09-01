@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { AGENT_TYPES, AGENT_PRIVACY_NOTE } from '../../constants/options';
 import { Agents } from '../../services/endpoints';
 import { useAction } from '../../hooks/useApi';
@@ -31,6 +31,43 @@ import NoticeBar from '../../components/mobile/NoticeBar';
  * the billing route is written so it has no reason to read these tables at all.
  */
 export default function CommissionAgentScreen({ role, onBack, onAddAgent, onContinue, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  right: { alignItems: 'flex-end' },
+  typeNote: { marginTop: 11 },
+  search: { paddingHorizontal: 18, marginTop: 20 },
+
+  found: {
+    marginTop: 14,
+    backgroundColor: COLORS.infoRow,
+    borderWidth: 1,
+    borderColor: COLORS.infoBorder,
+    borderRadius: 11,
+    padding: 13,
+  },
+  foundHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  foundMeta: { marginTop: 2, marginBottom: 1 },
+  foundStats: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 12,
+    paddingTop: 11,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.infoBorder,
+  },
+  notFound: { marginTop: 14 },
+
+  add: {
+    marginTop: 13,
+    paddingVertical: 13,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+}), [COLORS]);
   const [type, setType] = React.useState('builder');
   const [phone, setPhone] = React.useState('');
   const [found, setFound] = React.useState(undefined); // undefined = not searched
@@ -145,39 +182,4 @@ export default function CommissionAgentScreen({ role, onBack, onAddAgent, onCont
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  right: { alignItems: 'flex-end' },
-  typeNote: { marginTop: 11 },
-  search: { paddingHorizontal: 18, marginTop: 20 },
 
-  found: {
-    marginTop: 14,
-    backgroundColor: COLORS.infoRow,
-    borderWidth: 1,
-    borderColor: COLORS.infoBorder,
-    borderRadius: 11,
-    padding: 13,
-  },
-  foundHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  foundMeta: { marginTop: 2, marginBottom: 1 },
-  foundStats: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    marginTop: 12,
-    paddingTop: 11,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.infoBorder,
-  },
-  notFound: { marginTop: 14 },
-
-  add: {
-    marginTop: 13,
-    paddingVertical: 13,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: COLORS.border,
-    alignItems: 'center',
-  },
-});

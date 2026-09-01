@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Dispatch } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { businessDate, formatTime } from '../../utils/datetime';
@@ -25,14 +25,26 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * The route is the caller's own: `GET /dispatch/route` is scoped to req.user.id
  * and needs no grant, which is why a driver account holds almost nothing.
  */
-const STATE = {
+function makeSTATE(COLORS) {
+  return {
   active: { disc: COLORS.primary, row: COLORS.infoRow, badge: 'info', label: 'Active' },
   pending: { disc: COLORS.actionNeutral, row: COLORS.surface, badge: 'neutral', label: 'Go Next' },
   done: { disc: COLORS.actionApprove, row: COLORS.surface, badge: 'success', label: 'Done' },
   failed: { disc: COLORS.actionReject, row: COLORS.errorRow, badge: 'danger', label: 'Failed' },
 };
+}
 
 export default function DriverRouteScreen({ role, nav, onOpenStop }) {
+  const COLORS = useThemeColors();
+  const STATE = React.useMemo(() => makeSTATE(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1, paddingHorizontal: 11 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  meta: { marginTop: 3 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => Dispatch.myRoute(), []);
 
   const sheet = data?.sheet;
@@ -132,11 +144,3 @@ export default function DriverRouteScreen({ role, nav, onOpenStop }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1, paddingHorizontal: 11 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  meta: { marginTop: 3 },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Field as FieldApi } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupees, rupeesShort } from '../../utils/format';
@@ -35,6 +35,18 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 export default function SalesmanDashboardScreen({
   role, nav, onNewOrder, onNewDealer, onOpenScheme, onOpenHandover,
 }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  pair: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  empty: { padding: 20, alignItems: 'center' },
+  link: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => FieldApi.day(), []);
 
   const totals = data?.totals || {};
@@ -155,14 +167,4 @@ export default function SalesmanDashboardScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  pair: { flexDirection: 'row', gap: 10 },
-  half: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  empty: { padding: 20, alignItems: 'center' },
-  link: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-});
+

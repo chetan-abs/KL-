@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import { useThemeColors } from '../context/ThemeContext';
 import { TYPOGRAPHY } from '../constants/typography';
 import AppText from './AppText';
 import { _subscribeAlertHost } from '../services/confirm';
@@ -18,6 +18,54 @@ import { _subscribeAlertHost } from '../services/confirm';
  * destructive action inside its callback never ran.
  */
 export default function AlertHost() {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
+    padding: 24,
+    elevation: 12,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+  },
+  title: { marginBottom: 6 },
+  message: { marginBottom: 18, lineHeight: 20 },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 9,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    minHeight: 46,
+    marginBottom: 18,
+    color: COLORS.text,
+    fontFamily: TYPOGRAPHY.fontFamily.regular,
+    fontSize: TYPOGRAPHY.size.md,
+    outlineStyle: 'none',
+  },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  btnGhost: {
+    paddingVertical: 11,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+  },
+  btn: { paddingVertical: 11, paddingHorizontal: 22, borderRadius: 10, backgroundColor: COLORS.primary },
+  btnDestructive: { backgroundColor: COLORS.actionReject },
+  btnInert: { backgroundColor: COLORS.disabled },
+}), [COLORS]);
   const [dialog, setDialog] = React.useState(null);
   const [text, setText] = React.useState('');
 
@@ -105,50 +153,3 @@ export default function AlertHost() {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
-    padding: 24,
-    elevation: 12,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-  },
-  title: { marginBottom: 6 },
-  message: { marginBottom: 18, lineHeight: 20 },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 9,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    minHeight: 46,
-    marginBottom: 18,
-    color: COLORS.text,
-    fontFamily: TYPOGRAPHY.fontFamily.regular,
-    fontSize: TYPOGRAPHY.size.md,
-    outlineStyle: 'none',
-  },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
-  btnGhost: {
-    paddingVertical: 11,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-  },
-  btn: { paddingVertical: 11, paddingHorizontal: 22, borderRadius: 10, backgroundColor: COLORS.primary },
-  btnDestructive: { backgroundColor: COLORS.actionReject },
-  btnInert: { backgroundColor: COLORS.disabled },
-});

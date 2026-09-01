@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { TYPOGRAPHY } from '../../constants/typography';
 import AppText from '../AppText';
 
@@ -13,14 +13,35 @@ import AppText from '../AppText';
  * the colour, not the numbers. `tone` is decided by the caller since only it
  * knows whether "0 of 6" means not-yet-picked or not-found.
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   neutral: { border: COLORS.border, text: COLORS.text },
   success: { border: COLORS.success, text: COLORS.successDark },
   warning: { border: COLORS.warning, text: COLORS.warningDark },
   danger: { border: COLORS.error, text: COLORS.actionRejectDark },
 };
+}
 
 export default function QtyBox({ value, onChangeText, target, tone = 'neutral', editable = true, label }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  wrap: { alignItems: 'center' },
+  label: { marginBottom: 3 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  box: {
+    width: 50,
+    height: 38,
+    borderWidth: 2,
+    borderRadius: 8,
+    textAlign: 'center',
+    backgroundColor: COLORS.surface,
+    fontFamily: TYPOGRAPHY.fontFamily.bold,
+    fontSize: TYPOGRAPHY.size.md,
+    outlineStyle: 'none',
+  },
+  target: { marginLeft: 4 },
+}), [COLORS]);
   const palette = TONES[tone] || TONES.neutral;
 
   return (
@@ -50,20 +71,3 @@ export default function QtyBox({ value, onChangeText, target, tone = 'neutral', 
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { alignItems: 'center' },
-  label: { marginBottom: 3 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  box: {
-    width: 50,
-    height: 38,
-    borderWidth: 2,
-    borderRadius: 8,
-    textAlign: 'center',
-    backgroundColor: COLORS.surface,
-    fontFamily: TYPOGRAPHY.fontFamily.bold,
-    fontSize: TYPOGRAPHY.size.md,
-    outlineStyle: 'none',
-  },
-  target: { marginLeft: 4 },
-});

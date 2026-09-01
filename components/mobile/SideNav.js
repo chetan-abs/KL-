@@ -3,7 +3,7 @@ import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { SIDEBAR_WIDTH } from '../../hooks/useBreakpoint';
 import AppText from '../AppText';
 
@@ -20,6 +20,55 @@ import AppText from '../AppText';
  * chrome; on the phone the navy header carries it instead.
  */
 export default function SideNav({ tabs = [], active, onSelect, user, roleTitle }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  rail: {
+    width: SIDEBAR_WIDTH,
+    backgroundColor: COLORS.brand,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.headerEdge,
+  },
+  brand: {
+    paddingHorizontal: 18,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.headerEdge,
+  },
+  place: { marginTop: 2 },
+
+  list: { flex: 1 },
+  listBody: { paddingVertical: 12, paddingHorizontal: 10, gap: 2 },
+
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+  },
+  // A lighter wash of the rail rather than a contrasting fill: the selected item
+  // should read as raised out of the navy, not pasted onto it.
+  itemOn: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  label: { flex: 1 },
+
+  badge: {
+    minWidth: 20,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    backgroundColor: COLORS.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  foot: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.headerEdge,
+  },
+}), [COLORS]);
   const insets = useSafeAreaInsets();
 
   return (
@@ -86,51 +135,3 @@ export default function SideNav({ tabs = [], active, onSelect, user, roleTitle }
   );
 }
 
-const styles = StyleSheet.create({
-  rail: {
-    width: SIDEBAR_WIDTH,
-    backgroundColor: COLORS.brand,
-    borderRightWidth: 1,
-    borderRightColor: COLORS.headerEdge,
-  },
-  brand: {
-    paddingHorizontal: 18,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.headerEdge,
-  },
-  place: { marginTop: 2 },
-
-  list: { flex: 1 },
-  listBody: { paddingVertical: 12, paddingHorizontal: 10, gap: 2 },
-
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    borderRadius: 9,
-  },
-  // A lighter wash of the rail rather than a contrasting fill: the selected item
-  // should read as raised out of the navy, not pasted onto it.
-  itemOn: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  label: { flex: 1 },
-
-  badge: {
-    minWidth: 20,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 5,
-    backgroundColor: COLORS.error,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  foot: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.headerEdge,
-  },
-});

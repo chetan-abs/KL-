@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Cash } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -29,6 +29,27 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * confirmation so nobody closes a short drawer without reading the number.
  */
 export default function EodScreen({ role, nav, onOpenHandover }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  spaced: { marginTop: 13 },
+  expected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  variance: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 13,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => Cash.eod(), []);
 
   const [opening, setOpening] = React.useState('0');
@@ -230,23 +251,3 @@ export default function EodScreen({ role, nav, onOpenHandover }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  spaced: { marginTop: 13 },
-  expected: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  variance: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 13,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-});

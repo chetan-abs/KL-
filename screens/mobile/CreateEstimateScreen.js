@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Field as FieldApi, Items, Customers } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -32,6 +32,20 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * not honoured at this month's cost.
  */
 export default function CreateEstimateScreen({ role, nav, onConverted }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  spaced: { marginTop: 13 },
+  line: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  qty: { width: 56 },
+  qtyInput: { minHeight: 38, textAlign: 'center', paddingHorizontal: 6 },
+  lineTotal: { width: 64, textAlign: 'right' },
+  remove: { paddingHorizontal: 4 },
+  addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+}), [COLORS]);
   const list = useApi(() => FieldApi.estimates(), []);
   const parties = useApi(() => Customers.list({ limit: 200 }), []);
   const items = useApi(() => Items.list({ limit: 200 }), []);
@@ -231,16 +245,3 @@ export default function CreateEstimateScreen({ role, nav, onConverted }) {
   );
 }
 
-const styles = StyleSheet.create({
-  spaced: { marginTop: 13 },
-  line: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  qty: { width: 56 },
-  qtyInput: { minHeight: 38, textAlign: 'center', paddingHorizontal: 6 },
-  lineTotal: { width: 64, textAlign: 'right' },
-  remove: { paddingHorizontal: 4 },
-  addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-});

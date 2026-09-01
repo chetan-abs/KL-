@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Git } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees, rupeesShort } from '../../utils/format';
@@ -52,6 +52,23 @@ const FREIGHT_OPTIONS = [
 ];
 
 export default function GitScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  entry: { paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  entryHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  tail: { alignItems: 'flex-end', gap: 6 },
+  stages: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  warn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: COLORS.surfaceLight,
+  },
+}), [COLORS]);
   const [filter, setFilter] = React.useState('open');
   const [adding, setAdding] = React.useState(false);
 
@@ -337,19 +354,3 @@ export default function GitScreen({ role, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  entry: { paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  entryHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  tail: { alignItems: 'flex-end', gap: 6 },
-  stages: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  warn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: COLORS.surfaceLight,
-  },
-});

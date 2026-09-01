@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Payroll } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -33,6 +33,19 @@ const STATUS_TONE = {
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 export default function SalaryRegisterScreen({ role, nav, onBack, onOpenEmployee }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalRow: { padding: 14, alignItems: 'center' },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 12, paddingHorizontal: 14,
+  },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  meta: { marginTop: 3 },
+  net: { marginRight: 2 },
+}), [COLORS]);
   const [period, setPeriod] = React.useState(thisMonth());
   const { data, loading, error, reload } = useApi(() => Payroll.register(period), [period]);
   const rows = data?.rows || [];
@@ -96,15 +109,3 @@ export default function SalaryRegisterScreen({ role, nav, onBack, onOpenEmployee
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  totalRow: { padding: 14, alignItems: 'center' },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  meta: { marginTop: 3 },
-  net: { marginRight: 2 },
-});

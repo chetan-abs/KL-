@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useTheme, useThemeColors } from '../../context/ThemeContext';
 import { WILDCARD } from '../../constants/permissions';
 import { userCan } from '../../utils/permissions';
 import { API_BASE_URL } from '../../services/api';
@@ -14,6 +14,12 @@ import DetailRow from '../../components/mobile/DetailRow';
 import Avatar from '../../components/mobile/Avatar';
 import Badge from '../../components/mobile/Badge';
 import ActionButton from '../../components/mobile/ActionButton';
+
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+];
 
 /**
  * The account screen every role carries.
@@ -31,6 +37,36 @@ export default function ProfileScreen({
   onOpenSalary, onOpenAdvances, onOpenIncentive, onOpenAttendance,
   onOpenChangePassword, onOpenPasswordRequests,
 }) {
+  const COLORS = useThemeColors();
+  const { preference, setTheme } = useTheme();
+  const styles = React.useMemo(() => StyleSheet.create({
+    flex: { flex: 1 },
+    linkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    ruled: { borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
+    identity: { flexDirection: 'row', alignItems: 'center' },
+    identityText: { marginLeft: 14 },
+    grants: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    link: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    meta: { marginTop: 3 },
+    themeRow: { flexDirection: 'row', gap: 8, padding: 14 },
+    themeChip: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 9,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      backgroundColor: COLORS.surface,
+      alignItems: 'center',
+    },
+    themeChipOn: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
+  }), [COLORS]);
+
   const granted = React.useMemo(() => {
     if (!user?.permissions) return [];
     return Array.isArray(user.permissions) ? user.permissions : JSON.parse(user.permissions || '[]');
@@ -60,6 +96,31 @@ export default function ProfileScreen({
             <AppText weight="bold" size="lg">{user?.name || role.name}</AppText>
             <AppText size="sm" color={COLORS.textSecondary}>{role.title}</AppText>
           </View>
+        </View>
+      </Card>
+
+      {/* The device already carries its owner's own light/dark choice for
+          every other app; "System" (the default) is what respects that
+          instead of silently overriding it for this one app alone. */}
+      <Card title="Appearance" flush>
+        <View style={styles.themeRow}>
+          {THEME_OPTIONS.map((opt) => {
+            const on = preference === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.themeChip, on ? styles.themeChipOn : null]}
+                onPress={() => setTheme(opt.value)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={`${opt.label} theme`}
+              >
+                <AppText weight={on ? 'bold' : 'regular'} size="sm" color={on ? COLORS.white : COLORS.text}>
+                  {opt.label}
+                </AppText>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </Card>
 
@@ -141,7 +202,7 @@ export default function ProfileScreen({
           <Card>
             <View style={styles.link}>
               <View style={styles.flex}>
-                <AppText weight="bold" size="sm">People &amp; access</AppText>
+                <AppText weight="bold" size="sm">People & access</AppText>
                 <AppText size="xs" color={COLORS.textSecondary} style={styles.meta}>
                   Grant or revoke what staff can do
                 </AppText>
@@ -184,6 +245,20 @@ export default function ProfileScreen({
 
 /** A tappable row inside a flush Card — the same shape as `DetailRow`, but a link. */
 function LinkRow({ title, subtitle, onPress, last = false }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+    linkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    ruled: { borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
+    flex: { flex: 1 },
+    meta: { marginTop: 3 },
+  }), [COLORS]);
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.75} accessibilityRole="button">
       <View style={[styles.linkRow, last ? null : styles.ruled]}>
@@ -196,20 +271,3 @@ function LinkRow({ title, subtitle, onPress, last = false }) {
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  ruled: { borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  identity: { flexDirection: 'row', alignItems: 'center' },
-  identityText: { marginLeft: 14 },
-  grants: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  link: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  meta: { marginTop: 3 },
-});

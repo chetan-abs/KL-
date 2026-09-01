@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { useBreakpoint, CONTENT_MAX_WIDTH } from '../../hooks/useBreakpoint';
 import AppText from '../AppText';
 import Badge from './Badge';
@@ -42,6 +42,50 @@ export default function ScreenHeader({
   action,
   right,
 }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  header: {
+    backgroundColor: COLORS.brand,
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.headerEdge,
+  },
+  statusLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  roleWrap: { flexDirection: 'row', alignItems: 'center' },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.success, marginLeft: 7 },
+
+  deskHeader: {
+    backgroundColor: COLORS.background,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    alignItems: 'center',
+  },
+  // The horizontal padding lives on the inner box, not the outer one, so the
+  // title lands on the same vertical as the cards below it — the content column
+  // pads inside its own max width, and a header padded outside its own would sit
+  // 22px to the left of everything it labels.
+  deskInner: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, paddingHorizontal: 22 },
+
+  back: { alignSelf: 'flex-start', paddingVertical: 3, marginBottom: 4 },
+  // `gap` rather than relying on space-between alone: with a title, an action
+  // and a badge all in the row, space-between alone let the last two touch.
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  action: { paddingVertical: 4, paddingHorizontal: 2 },
+  // Badge defaults to `alignSelf: flex-start` so it hugs its content in a
+  // column; in this row that floated it above the action beside it.
+  headerBadge: { alignSelf: 'center' },
+  // Holds the pill against the row's right edge no matter how short the title
+  // is; without it a one-word title drags the pill in beside itself.
+  titleBlock: { flex: 1, paddingRight: 12 },
+  subtitle: { marginTop: 3 },
+}), [COLORS]);
   const insets = useSafeAreaInsets();
   const { hasSidebar } = useBreakpoint();
 
@@ -161,46 +205,4 @@ export default function ScreenHeader({
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    backgroundColor: COLORS.brand,
-    paddingHorizontal: 18,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.headerEdge,
-  },
-  statusLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  roleWrap: { flexDirection: 'row', alignItems: 'center' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.success, marginLeft: 7 },
 
-  deskHeader: {
-    backgroundColor: COLORS.background,
-    paddingBottom: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    alignItems: 'center',
-  },
-  // The horizontal padding lives on the inner box, not the outer one, so the
-  // title lands on the same vertical as the cards below it — the content column
-  // pads inside its own max width, and a header padded outside its own would sit
-  // 22px to the left of everything it labels.
-  deskInner: { width: '100%', maxWidth: CONTENT_MAX_WIDTH, paddingHorizontal: 22 },
-
-  back: { alignSelf: 'flex-start', paddingVertical: 3, marginBottom: 4 },
-  // `gap` rather than relying on space-between alone: with a title, an action
-  // and a badge all in the row, space-between alone let the last two touch.
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  action: { paddingVertical: 4, paddingHorizontal: 2 },
-  // Badge defaults to `alignSelf: flex-start` so it hugs its content in a
-  // column; in this row that floated it above the action beside it.
-  headerBadge: { alignSelf: 'center' },
-  // Holds the pill against the row's right edge no matter how short the title
-  // is; without it a one-word title drags the pill in beside itself.
-  titleBlock: { flex: 1, paddingRight: 12 },
-  subtitle: { marginTop: 3 },
-});

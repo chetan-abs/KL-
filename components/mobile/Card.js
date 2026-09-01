@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -15,22 +15,8 @@ import AppText from '../AppText';
  * that draw their own dividers.
  */
 export default function Card({ title, right, children, flush = false, style, bodyStyle }) {
-  return (
-    <View style={[styles.card, style]}>
-      {title ? (
-        <View style={styles.head}>
-          <AppText weight="bold" size={11} color={COLORS.textSecondary} style={styles.title}>
-            {title}
-          </AppText>
-          {right}
-        </View>
-      ) : null}
-      <View style={[flush ? null : styles.body, bodyStyle]}>{children}</View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: 14,
@@ -50,4 +36,19 @@ const styles = StyleSheet.create({
   },
   title: { letterSpacing: 0.8, textTransform: 'uppercase' },
   body: { padding: 16 },
-});
+}), [COLORS]);
+  return (
+    <View style={[styles.card, style]}>
+      {title ? (
+        <View style={styles.head}>
+          <AppText weight="bold" size={11} color={COLORS.textSecondary} style={styles.title}>
+            {title}
+          </AppText>
+          {right}
+        </View>
+      ) : null}
+      <View style={[flush ? null : styles.body, bodyStyle]}>{children}</View>
+    </View>
+  );
+}
+

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Incentives } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees, rupeesShort } from '../../utils/format';
@@ -42,6 +42,17 @@ const toneFor = (pct) => {
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 
 export default function IncentiveScreen({ role, nav, onBack, params = {} }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  total: { alignItems: 'center', paddingVertical: 6 },
+  meta: { marginTop: 4, textAlign: 'center' },
+  seg: { paddingVertical: 12, paddingHorizontal: 14, gap: 7 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  segHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  segName: { flex: 1 },
+  segFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+}), [COLORS]);
   const employeeId = params.employeeId || role.key;
   const [period, setPeriod] = React.useState(params.period || thisMonth());
 
@@ -197,13 +208,3 @@ export default function IncentiveScreen({ role, nav, onBack, params = {} }) {
   );
 }
 
-const styles = StyleSheet.create({
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  total: { alignItems: 'center', paddingVertical: 6 },
-  meta: { marginTop: 4, textAlign: 'center' },
-  seg: { paddingVertical: 12, paddingHorizontal: 14, gap: 7 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  segHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  segName: { flex: 1 },
-  segFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-});

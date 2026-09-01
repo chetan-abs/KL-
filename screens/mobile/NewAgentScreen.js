@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { AGENT_TYPES, PROFESSIONS } from '../../constants/options';
 import { Agents } from '../../services/endpoints';
 import { useAction } from '../../hooks/useApi';
@@ -28,6 +28,10 @@ import NoticeBar from '../../components/mobile/NoticeBar';
  * amount nobody can compute.
  */
 export default function NewAgentScreen({ role, onBack, onSaved, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  spaced: { marginTop: 13 },
+}), [COLORS]);
   const [type, setType] = React.useState('electrician');
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('97654-88901');
@@ -142,6 +146,4 @@ export default function NewAgentScreen({ role, onBack, onSaved, nav}) {
   );
 }
 
-const styles = StyleSheet.create({
-  spaced: { marginTop: 13 },
-});
+

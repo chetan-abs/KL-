@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Dispatch, Orders, Users } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { businessDate } from '../../utils/datetime';
@@ -30,11 +30,28 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * Only invoiced orders can be loaded: goods leave the building once they are
  * billed, and the server refuses anything earlier.
  */
-const SEQ_COLORS = [COLORS.actionReject, COLORS.accent, COLORS.brand, COLORS.actionTeal];
+function makeSEQ_COLORS(COLORS) {
+  return [COLORS.actionReject, COLORS.accent, COLORS.brand, COLORS.actionTeal];
+}
 
 const ordinal = (n) => `${n}${['st', 'nd', 'rd'][n - 1] || 'th'}`;
 
 export default function DispatchSheetScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const SEQ_COLORS = React.useMemo(() => makeSEQ_COLORS(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  pair: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1, paddingHorizontal: 11 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  meta: { marginTop: 3 },
+  empty: { padding: 20, alignItems: 'center' },
+  intro: { lineHeight: 19 },
+  spaced: { marginTop: 13 },
+}), [COLORS]);
   const sheets = useApi(() => Dispatch.sheets(), []);
   // Orders at `invoiced`, not the billing queue: a dispatcher needs to know what
   // is ready to load, and reading the invoice list would need `billing.view` —
@@ -247,16 +264,3 @@ export default function DispatchSheetScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  pair: { flexDirection: 'row', gap: 10 },
-  half: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1, paddingHorizontal: 11 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  meta: { marginTop: 3 },
-  empty: { padding: 20, alignItems: 'center' },
-  intro: { lineHeight: 19 },
-  spaced: { marginTop: 13 },
-});

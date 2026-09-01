@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { TYPOGRAPHY } from '../../constants/typography';
 import AppText from '../AppText';
 
@@ -20,6 +20,30 @@ const Field = React.forwardRef(function Field(
   { label, required, hint, error, right, style, inputStyle, ...props },
   ref
 ) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+    label: { marginBottom: 6 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    input: {
+      flex: 1,
+      minHeight: 46,
+      borderWidth: 1,
+      borderColor: COLORS.border,
+      borderRadius: 9,
+      paddingHorizontal: 13,
+      paddingVertical: 11,
+      backgroundColor: COLORS.surface,
+      color: COLORS.text,
+      fontFamily: TYPOGRAPHY.fontFamily.regular,
+      fontSize: TYPOGRAPHY.size.md,
+      // Kills the browser's own focus ring on web, which is a square outline that
+      // ignores the 9px radius and sits a pixel outside the border.
+      outlineStyle: 'none',
+    },
+    inputError: { borderColor: COLORS.error },
+    note: { marginTop: 5 },
+  }), [COLORS]);
+
   return (
     <View style={style}>
       {label ? (
@@ -53,26 +77,3 @@ const Field = React.forwardRef(function Field(
 });
 
 export default Field;
-
-const styles = StyleSheet.create({
-  label: { marginBottom: 6 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  input: {
-    flex: 1,
-    minHeight: 46,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 9,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    backgroundColor: COLORS.surface,
-    color: COLORS.text,
-    fontFamily: TYPOGRAPHY.fontFamily.regular,
-    fontSize: TYPOGRAPHY.size.md,
-    // Kills the browser's own focus ring on web, which is a square outline that
-    // ignores the 9px radius and sits a pixel outside the border.
-    outlineStyle: 'none',
-  },
-  inputError: { borderColor: COLORS.error },
-  note: { marginTop: 5 },
-});

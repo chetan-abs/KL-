@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Cash } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -27,6 +27,22 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * and never printed on the party's invoice.
  */
 export default function SchemeScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  slab: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  reached: { backgroundColor: COLORS.successRow },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 11 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  window: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    backgroundColor: COLORS.surfaceLight,
+  },
+}), [COLORS]);
   const { data, loading, error, reload } = useApi(() => Cash.schemes(), []);
 
   // The first live scheme. More than one at a time is possible but rare, and a
@@ -121,18 +137,3 @@ export default function SchemeScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  slab: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  reached: { backgroundColor: COLORS.successRow },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 11 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  window: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-    backgroundColor: COLORS.surfaceLight,
-  },
-});

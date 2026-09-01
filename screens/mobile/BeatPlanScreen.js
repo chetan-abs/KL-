@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Field as FieldApi, Customers } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { businessDate, formatTime } from '../../utils/datetime';
@@ -37,14 +37,27 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * Background tracking does not exist on web, and the banner says so instead of
  * claiming a fix it cannot take.
  */
-const STATE = {
+function makeSTATE(COLORS) {
+  return {
   done: { disc: COLORS.actionApprove, badge: 'success', label: 'Done' },
   next: { disc: COLORS.primary, badge: 'info', label: 'Next' },
   planned: { disc: COLORS.actionNeutral, badge: 'neutral', label: 'Planned' },
   skipped: { disc: COLORS.actionNeutral, badge: 'neutral', label: 'Skipped' },
 };
+}
 
 export default function BeatPlanScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const STATE = React.useMemo(() => makeSTATE(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  coverHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  coverBar: { marginTop: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  next: { backgroundColor: COLORS.infoRow },
+  body: { flex: 1, paddingHorizontal: 11 },
+  meta: { marginTop: 3 },
+}), [COLORS]);
   const plan = useApi(() => FieldApi.beat(), []);
   const parties = useApi(() => Customers.list({ limit: 100 }), []);
 
@@ -201,12 +214,3 @@ export default function BeatPlanScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  coverHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  coverBar: { marginTop: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  next: { backgroundColor: COLORS.infoRow },
-  body: { flex: 1, paddingHorizontal: 11 },
-  meta: { marginTop: 3 },
-});

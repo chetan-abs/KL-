@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Attendance } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { formatTime, businessDate } from '../../utils/datetime';
@@ -22,14 +22,32 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * employee's own shift, so a phone set to the wrong zone cannot turn a red
  * into a grey. This screen only maps that word onto a colour.
  */
-const STATUS = {
+function makeSTATUS(COLORS) {
+  return {
   present: { label: 'Present', tone: 'success', dot: COLORS.success },
   late: { label: 'Late', tone: 'warning', dot: COLORS.warning },
   absent: { label: 'Absent', tone: 'danger', dot: COLORS.error },
   pending: { label: 'Not yet', tone: 'neutral', dot: COLORS.textMuted },
 };
+}
 
 export default function AttendanceRegisterScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const STATUS = React.useMemo(() => makeSTATUS(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  summary: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 16, padding: 14,
+  },
+  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 9, height: 9, borderRadius: 5 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 12, paddingHorizontal: 14,
+  },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  meta: { marginTop: 3 },
+}), [COLORS]);
   const { data, loading, error, reload } = useApi(() => Attendance.daily(), []);
   const rows = data?.attendance || [];
 
@@ -91,17 +109,3 @@ export default function AttendanceRegisterScreen({ role, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  summary: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 16, padding: 14,
-  },
-  summaryItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 12, paddingHorizontal: 14,
-  },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  meta: { marginTop: 3 },
-});

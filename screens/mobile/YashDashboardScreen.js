@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Orders, Picking, Verification, Billing, Payments, Alerts } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupeesShort } from '../../utils/format';
@@ -31,17 +31,31 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * bespoke reporting route — one less query to keep in step with the pipeline,
  * and every figure here is one somebody else is already acting on.
  */
-const PIPELINE_TONE = {
-  pending: COLORS.warning,
-  info: COLORS.primary,
-  warning: COLORS.accent,
-  violet: COLORS.secondary,
-  success: COLORS.success,
-};
+function makePIPELINE_TONE(COLORS) {
+  return {
+    pending: COLORS.warning,
+    info: COLORS.primary,
+    warning: COLORS.accent,
+    violet: COLORS.secondary,
+    success: COLORS.success,
+  };
+}
 
 export default function YashDashboardScreen({
   role, nav, onOpenOrders, onOpenReports, onOpenRateChanges, onOpenTally, onOpenAttendanceRegister,
 }) {
+  const COLORS = useThemeColors();
+  const PIPELINE_TONE = React.useMemo(() => makePIPELINE_TONE(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+    flex: { flex: 1 },
+    alerts: { padding: 12, gap: 9 },
+    stage: { paddingVertical: 12, paddingHorizontal: 14 },
+    ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+    stageHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    stageBar: { marginTop: 8 },
+    empty: { padding: 20, alignItems: 'center' },
+  }), [COLORS]);
+
   const pending = useApi(() => Orders.list({ status: 'pending' }), []);
   const confirmed = useApi(() => Orders.list({ status: 'confirmed' }), []);
   const picks = useApi(() => Picking.queue(), []);
@@ -209,6 +223,20 @@ export default function YashDashboardScreen({
 
 /** A tappable row inside a flush Card. */
 function LinkRow({ title, subtitle, onPress, last = false }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+    flex: { flex: 1 },
+    linkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 13,
+      paddingHorizontal: 14,
+    },
+    ruledBottom: { borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
+    linkMeta: { marginTop: 3 },
+  }), [COLORS]);
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.75} accessibilityRole="button">
       <View style={[styles.linkRow, last ? null : styles.ruledBottom]}>
@@ -221,22 +249,3 @@ function LinkRow({ title, subtitle, onPress, last = false }) {
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  ruledBottom: { borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  linkMeta: { marginTop: 3 },
-  alerts: { padding: 12, gap: 9 },
-  stage: { paddingVertical: 12, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  stageHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stageBar: { marginTop: 8 },
-  empty: { padding: 20, alignItems: 'center' },
-});

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 import ActionButton from './ActionButton';
 
@@ -31,6 +31,15 @@ export default function AsyncBoundary({
   emptyGlyph = '—',
   children,
 }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  centre: { paddingVertical: 56, paddingHorizontal: 28, alignItems: 'center' },
+  glyph: { marginBottom: 10 },
+  title: { marginBottom: 5, textAlign: 'center' },
+  body: { textAlign: 'center', lineHeight: 20 },
+  note: { marginTop: 10 },
+  retry: { marginTop: 20, alignSelf: 'stretch' },
+}), [COLORS]);
   if (loading) {
     return (
       <View style={styles.centre}>
@@ -75,11 +84,3 @@ export default function AsyncBoundary({
   return children;
 }
 
-const styles = StyleSheet.create({
-  centre: { paddingVertical: 56, paddingHorizontal: 28, alignItems: 'center' },
-  glyph: { marginBottom: 10 },
-  title: { marginBottom: 5, textAlign: 'center' },
-  body: { textAlign: 'center', lineHeight: 20 },
-  note: { marginTop: 10 },
-  retry: { marginTop: 20, alignSelf: 'stretch' },
-});

@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, ActivityIndicator, View, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -15,7 +15,8 @@ import AppText from '../AppText';
  * reason `Button` gives: dimming a coloured fill reads as "in flight", which is
  * the opposite of "you cannot do this yet".
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   brand: { bg: COLORS.brand, shadow: COLORS.brandDark, text: COLORS.textOnBrand },
   approve: { bg: COLORS.actionApprove, shadow: COLORS.actionApproveDark, text: COLORS.white },
   reject: { bg: COLORS.actionReject, shadow: COLORS.actionRejectDark, text: COLORS.white },
@@ -23,6 +24,7 @@ const TONES = {
   teal: { bg: COLORS.actionTeal, shadow: COLORS.actionTealDark, text: COLORS.white },
   primary: { bg: COLORS.primary, shadow: COLORS.primaryDark, text: COLORS.textOnPrimary },
 };
+}
 
 export default function ActionButton({
   label,
@@ -35,6 +37,21 @@ export default function ActionButton({
   accessibilityLabel,
   style,
 }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  base: {
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  md: { minHeight: 54 },
+  sm: { minHeight: 40, borderRadius: 9 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  spinner: { marginRight: 9 },
+  inert: { backgroundColor: COLORS.disabled },
+}), [COLORS]);
   const palette = TONES[tone] || TONES.brand;
   const inert = disabled || loading;
   const small = size === 'sm';
@@ -83,16 +100,3 @@ export default function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  md: { minHeight: 54 },
-  sm: { minHeight: 40, borderRadius: 9 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  spinner: { marginRight: 9 },
-  inert: { backgroundColor: COLORS.disabled },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Billing } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -29,6 +29,17 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * wrong.
  */
 export default function CreditNoteScreen({ role, nav, onNewReturn }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  row: { flexDirection: 'row', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  open: { backgroundColor: COLORS.warningRow },
+  body: { flex: 1, paddingLeft: 11 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  meta: { marginTop: 3 },
+  foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(
     () => Billing.creditNotes(),
     []
@@ -141,13 +152,3 @@ export default function CreditNoteScreen({ role, nav, onNewReturn }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  row: { flexDirection: 'row', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  open: { backgroundColor: COLORS.warningRow },
-  body: { flex: 1, paddingLeft: 11 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  meta: { marginTop: 3 },
-  foot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
-});

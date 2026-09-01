@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Items } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { userCan } from '../../utils/permissions';
@@ -82,6 +82,32 @@ const TABLE_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0);
  * everywhere else: Gaurav's edit here queues for Yash or Manoj too.
  */
 export default function ItemCatalogScreen({ role, user, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  spaced: { marginTop: 11 },
+  searchRow: { padding: 4 },
+  searchField: { margin: 0 },
+  picker: {
+    marginTop: 11, borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.border,
+    borderRadius: 9, padding: 14, alignItems: 'center',
+  },
+  tableBody: { padding: 0 },
+  headerRow: {
+    flexDirection: 'row', backgroundColor: COLORS.surfaceLight,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border,
+  },
+  dataRow: {
+    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.borderLight,
+  },
+  rowAlt: { backgroundColor: COLORS.surfaceLight },
+  rowOpen: { backgroundColor: COLORS.infoSurface },
+  cell: { paddingVertical: 10, paddingHorizontal: 8, justifyContent: 'center' },
+  sectionLabel: { letterSpacing: 0.6, marginBottom: 8, marginTop: 4 },
+  pageRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4,
+  },
+}), [COLORS]);
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(0);
   const [openId, setOpenId] = React.useState(null);
@@ -403,28 +429,3 @@ export default function ItemCatalogScreen({ role, user, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  spaced: { marginTop: 11 },
-  searchRow: { padding: 4 },
-  searchField: { margin: 0 },
-  picker: {
-    marginTop: 11, borderWidth: 1, borderStyle: 'dashed', borderColor: COLORS.border,
-    borderRadius: 9, padding: 14, alignItems: 'center',
-  },
-  tableBody: { padding: 0 },
-  headerRow: {
-    flexDirection: 'row', backgroundColor: COLORS.surfaceLight,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  dataRow: {
-    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.borderLight,
-  },
-  rowAlt: { backgroundColor: COLORS.surfaceLight },
-  rowOpen: { backgroundColor: COLORS.infoSurface },
-  cell: { paddingVertical: 10, paddingHorizontal: 8, justifyContent: 'center' },
-  sectionLabel: { letterSpacing: 0.6, marginBottom: 8, marginTop: 4 },
-  pageRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4,
-  },
-});

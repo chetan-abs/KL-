@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { TYPOGRAPHY } from '../constants/typography';
-import { COLORS } from '../constants/colors';
+import { useThemeColors } from '../context/ThemeContext';
 
 // A size or weight that does not exist used to resolve to the base size and the
 // system font with no complaint, so the mistake was invisible until someone
@@ -22,8 +22,9 @@ const AppText = ({
   weight = 'regular', 
   size = 'base', 
   color,
-  ...props 
+  ...props
 }) => {
+  const COLORS = useThemeColors();
   const textStyle = [
     {
       fontFamily: resolve(TYPOGRAPHY.fontFamily, weight, TYPOGRAPHY.fontFamily.regular, 'weight'),

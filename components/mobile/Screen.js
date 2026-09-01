@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { useBreakpoint, CONTENT_MAX_WIDTH } from '../../hooks/useBreakpoint';
 import BottomTabBar from './BottomTabBar';
 import SideNav from './SideNav';
@@ -43,6 +43,62 @@ export default function Screen({
   contentStyle,
   refreshControl,
 }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+
+  // ---- shared body -------------------------------------------------------
+  content: { padding: 14, paddingBottom: 22, gap: 12 },
+  contentWide: {
+    // Centred by the container's own max width rather than by margins on each
+    // card, so a full-bleed row inside a card still reaches both edges.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+    padding: 22,
+    paddingBottom: 40,
+    gap: 16,
+  },
+
+  // ---- phone / tablet ----------------------------------------------------
+  page: { flex: 1, backgroundColor: COLORS.background, alignItems: 'center' },
+  frame: {
+    flex: 1,
+    width: '100%',
+    // Tablets get the wider measure without the sidebar; the cap stops a 1024pt
+    // iPad rendering a phone column down the middle of the glass.
+    maxWidth: 720,
+    backgroundColor: COLORS.background,
+  },
+  footer: {
+    padding: 14,
+    paddingTop: 12,
+    gap: 10,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+
+  // ---- desktop -----------------------------------------------------------
+  deskPage: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.background },
+  deskMain: { flex: 1, backgroundColor: COLORS.background },
+  deskFooter: {
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  // Padded inside its own max width, matching the header and the content column
+  // so all three share one left edge.
+  deskFooterInner: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    paddingHorizontal: 22,
+    alignItems: 'flex-end',
+  },
+  deskActions: { width: '100%', maxWidth: 420, gap: 10 },
+}), [COLORS]);
   const { hasSidebar } = useBreakpoint();
 
   const body = scroll ? (
@@ -115,58 +171,4 @@ export default function Screen({
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
 
-  // ---- shared body -------------------------------------------------------
-  content: { padding: 14, paddingBottom: 22, gap: 12 },
-  contentWide: {
-    // Centred by the container's own max width rather than by margins on each
-    // card, so a full-bleed row inside a card still reaches both edges.
-    width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
-    padding: 22,
-    paddingBottom: 40,
-    gap: 16,
-  },
-
-  // ---- phone / tablet ----------------------------------------------------
-  page: { flex: 1, backgroundColor: COLORS.background, alignItems: 'center' },
-  frame: {
-    flex: 1,
-    width: '100%',
-    // Tablets get the wider measure without the sidebar; the cap stops a 1024pt
-    // iPad rendering a phone column down the middle of the glass.
-    maxWidth: 720,
-    backgroundColor: COLORS.background,
-  },
-  footer: {
-    padding: 14,
-    paddingTop: 12,
-    gap: 10,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-
-  // ---- desktop -----------------------------------------------------------
-  deskPage: { flex: 1, flexDirection: 'row', backgroundColor: COLORS.background },
-  deskMain: { flex: 1, backgroundColor: COLORS.background },
-  deskFooter: {
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  // Padded inside its own max width, matching the header and the content column
-  // so all three share one left edge.
-  deskFooterInner: {
-    width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    paddingHorizontal: 22,
-    alignItems: 'flex-end',
-  },
-  deskActions: { width: '100%', maxWidth: 420, gap: 10 },
-});

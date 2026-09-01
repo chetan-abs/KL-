@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Tally } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { relativeTime } from '../../utils/datetime';
@@ -35,7 +35,20 @@ const STATE_TONE = {
   skipped: 'neutral',
 };
 
+/** Colorless — shared with `Count`, no theme dependency. */
+const countStyle = { alignItems: 'center', gap: 2 };
+
 export default function TallyScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+    counts: { flexDirection: 'row', justifyContent: 'space-around' },
+    note: { marginTop: 12, textAlign: 'center' },
+    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+    ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+    body: { flex: 1 },
+    meta: { marginTop: 3 },
+  }), [COLORS]);
+
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => Tally.status(), []);
   const queue = useApi(() => Tally.queue({ status: 'failed' }), []);
 
@@ -210,20 +223,11 @@ export default function TallyScreen({ role, nav, onBack }) {
 }
 
 function Count({ label, value, tone }) {
+  const COLORS = useThemeColors();
   return (
-    <View style={styles.count}>
+    <View style={countStyle}>
       <AppText weight="bold" size="lg" color={tone || COLORS.text}>{value ?? 0}</AppText>
       <AppText size="xs" color={COLORS.textMuted}>{label}</AppText>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  counts: { flexDirection: 'row', justifyContent: 'space-around' },
-  count: { alignItems: 'center', gap: 2 },
-  note: { marginTop: 12, textAlign: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-});

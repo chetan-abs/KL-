@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Orders, Billing } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -30,6 +30,16 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * trusted with the call. It simply cannot happen quietly.
  */
 export default function InvoiceScreen({ role, orderId, party, onBack, onInvoiced, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 8 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  rateField: { width: 82 },
+  rateInput: { minHeight: 40, textAlign: 'right', paddingHorizontal: 9 },
+  unit: { width: 12 },
+}), [COLORS]);
   const { data, loading, error, reload } = useApi(() => Orders.get(orderId), [orderId]);
   const [rates, setRates] = React.useState({});
 
@@ -164,12 +174,4 @@ export default function InvoiceScreen({ role, orderId, party, onBack, onInvoiced
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 8 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  rateField: { width: 82 },
-  rateInput: { minHeight: 40, textAlign: 'right', paddingHorizontal: 9 },
-  unit: { width: 12 },
-});
+

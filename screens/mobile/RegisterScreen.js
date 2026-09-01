@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Payments } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -36,6 +36,16 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 const OVERDUE_DAYS = 45;
 
 export default function RegisterScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  overdue: { backgroundColor: COLORS.errorRow },
+  body: { flex: 1, paddingHorizontal: 11 },
+  meta: { marginTop: 3 },
+  right: { alignItems: 'flex-end' },
+  badge: { marginTop: 5 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(
     () => Payments.outstanding(),
     []
@@ -169,12 +179,3 @@ export default function RegisterScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  overdue: { backgroundColor: COLORS.errorRow },
-  body: { flex: 1, paddingHorizontal: 11 },
-  meta: { marginTop: 3 },
-  right: { alignItems: 'flex-end' },
-  badge: { marginTop: 5 },
-});

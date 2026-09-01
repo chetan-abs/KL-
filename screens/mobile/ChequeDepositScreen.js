@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Cash } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -30,14 +30,28 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * so the party's balance stops claiming money that never arrived. Tapping a row
  * is how a cheque moves state.
  */
-const STATE = {
+function makeSTATE(COLORS) {
+  return {
   to_deposit: { badge: 'pending', label: 'To deposit', row: COLORS.warningRow, next: 'deposited', verb: 'Deposit' },
   deposited: { badge: 'info', label: 'Deposited', row: COLORS.surface, next: 'cleared', verb: 'Mark cleared' },
   cleared: { badge: 'success', label: 'Cleared', row: COLORS.surface, next: null },
   bounced: { badge: 'danger', label: 'Bounced', row: COLORS.errorRow, next: null },
 };
+}
 
 export default function ChequeDepositScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const STATE = React.useMemo(() => makeSTATE(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { paddingVertical: 12, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  tapArea: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  right: { alignItems: 'flex-end' },
+  badge: { marginTop: 5 },
+  bounce: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 3 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => Cash.cheques(), []);
   const cheques = data?.cheques || [];
 
@@ -200,13 +214,3 @@ export default function ChequeDepositScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { paddingVertical: 12, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  tapArea: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  right: { alignItems: 'flex-end' },
-  badge: { marginTop: 5 },
-  bounce: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 3 },
-});

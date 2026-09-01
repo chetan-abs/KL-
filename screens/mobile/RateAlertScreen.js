@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Purchases } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -26,6 +26,15 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * the item master's cost being updated afterwards.
  */
 export default function RateAlertScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 10 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  rates: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 6 },
+  struck: { textDecorationLine: 'line-through' },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(
     () => Purchases.rateAlerts(),
     []
@@ -99,11 +108,3 @@ export default function RateAlertScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 10 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  rates: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 6 },
-  struck: { textDecorationLine: 'line-through' },
-});

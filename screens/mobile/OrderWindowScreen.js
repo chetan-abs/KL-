@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Orders, Items, Customers } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -36,6 +36,17 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * and dropped out of sales.
  */
 export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  line: { paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  lineHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  lineRate: { marginTop: 3 },
+  inputs: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 10 },
+  remove: { paddingHorizontal: 8, paddingVertical: 13 },
+  addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+}), [COLORS]);
   const parties = useApi(() => Customers.list({ limit: 200 }), []);
   const items = useApi(() => Items.list({ limit: 200 }), []);
 
@@ -283,13 +294,4 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  line: { paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  lineHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  lineRate: { marginTop: 3 },
-  inputs: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 10 },
-  remove: { paddingHorizontal: 8, paddingVertical: 13 },
-  addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-});
+

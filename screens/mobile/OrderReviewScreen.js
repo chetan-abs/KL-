@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Orders } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees, qtyWithUnit } from '../../utils/format';
@@ -33,6 +33,15 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 const OVERDUE_DAYS = 45;
 
 export default function OrderReviewScreen({ role, order: seed, onBack, onSettled, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  pair: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1 },
+  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 16 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  itemBody: { flex: 1, paddingRight: 10 },
+  itemMeta: { marginTop: 3 },
+}), [COLORS]);
   const orderId = seed?.order_id;
   const { data, loading, error, reload } = useApi(() => Orders.get(orderId), [orderId]);
   const order = data?.order;
@@ -191,11 +200,4 @@ export default function OrderReviewScreen({ role, order: seed, onBack, onSettled
   );
 }
 
-const styles = StyleSheet.create({
-  pair: { flexDirection: 'row', gap: 10 },
-  half: { flex: 1 },
-  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 16 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  itemBody: { flex: 1, paddingRight: 10 },
-  itemMeta: { marginTop: 3 },
-});
+

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { NEW_DEALER_FIELDS } from '../../constants/options';
 import { Customers } from '../../services/endpoints';
 import { useAction } from '../../hooks/useApi';
@@ -28,6 +28,10 @@ import NoticeBar from '../../components/mobile/NoticeBar';
  * account is used for a credit sale.
  */
 export default function NewDealerScreen({ role, onBack, onSaved, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  spaced: { marginTop: 13 },
+}), [COLORS]);
   const [type, setType] = React.useState('dealer');
   const [name, setName] = React.useState('');
   const [person, setPerson] = React.useState('');
@@ -173,6 +177,4 @@ export default function NewDealerScreen({ role, onBack, onSaved, nav}) {
   );
 }
 
-const styles = StyleSheet.create({
-  spaced: { marginTop: 13 },
-});
+

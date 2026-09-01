@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -14,15 +14,33 @@ import AppText from '../AppText';
  * a phone it is often the only thing between the header and a destructive
  * button.
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   warning: { bg: COLORS.warningSurface, border: COLORS.warningBorder, text: COLORS.warningDark, glyph: '⚠' },
   danger: { bg: COLORS.errorSurface, border: COLORS.errorBorder, text: COLORS.actionRejectDark, glyph: '⚠' },
   success: { bg: COLORS.successSurface, border: COLORS.successBorder, text: COLORS.successDark, glyph: '✓' },
   info: { bg: COLORS.infoSurface, border: COLORS.infoBorder, text: COLORS.infoDark, glyph: '📍' },
   violet: { bg: COLORS.violetSurface, border: COLORS.violetBorder, text: COLORS.violetDark, glyph: '💡' },
 };
+}
 
 export default function NoticeBar({ tone = 'warning', glyph, children, style }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 13,
+  },
+  glyph: { marginRight: 8, lineHeight: 20 },
+  // Without the basis the text box refuses to wrap inside a row and pushes its
+  // tail off the card's right edge instead of breaking onto a second line.
+  text: { flex: 1, lineHeight: 20 },
+}), [COLORS]);
   const palette = TONES[tone] || TONES.warning;
   const mark = glyph === null ? null : glyph || palette.glyph;
 
@@ -43,17 +61,3 @@ export default function NoticeBar({ tone = 'warning', glyph, children, style }) 
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 13,
-  },
-  glyph: { marginRight: 8, lineHeight: 20 },
-  // Without the basis the text box refuses to wrap inside a row and pushes its
-  // tail off the card's right edge instead of breaking onto a second line.
-  text: { flex: 1, lineHeight: 20 },
-});

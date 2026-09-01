@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Users } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { relativeTime } from '../../utils/datetime';
@@ -28,6 +28,12 @@ const TABS = [
  * whether the buttons are drawn.
  */
 export default function PasswordRequestsScreen({ role, nav, onBack }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  note: { marginTop: 8 },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+}), [COLORS]);
   const [status, setStatus] = React.useState('pending');
   const { data, loading, error, refreshing, reload, refresh } = useApi(
     () => Users.passwordRequests(status),
@@ -131,8 +137,3 @@ export default function PasswordRequestsScreen({ role, nav, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  note: { marginTop: 8 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
-});

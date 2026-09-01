@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Picking } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { showAlert, confirmAction } from '../../services/confirm';
@@ -32,12 +32,14 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * godown has no signal worth relying on, and a request per digit would leave a
  * half-recorded sheet the first time it dropped.
  */
-const STATUS_STYLE = {
+function makeSTATUS_STYLE(COLORS) {
+  return {
   done: { row: COLORS.successRow, tone: 'success', glyph: '✓' },
   partial: { row: COLORS.warningRow, tone: 'warning', glyph: '⚡' },
   missing: { row: COLORS.errorRow, tone: 'danger', glyph: '✗' },
   pending: { row: COLORS.surface, tone: 'neutral', glyph: null },
 };
+}
 
 /** A row's outcome follows from the count, so the two can never disagree. */
 function statusFor(picked, need) {
@@ -50,6 +52,19 @@ function statusFor(picked, need) {
 }
 
 export default function PickerScreen({ role, orderId, party, onBack, onHandover, nav}) {
+  const COLORS = useThemeColors();
+  const STATUS_STYLE = React.useMemo(() => makeSTATUS_STYLE(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  progressWrap: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 9 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+  choices: { flexDirection: 'row', gap: 6 },
+  // Matches the width of the two-disc pair beside it so rows in either state
+  // keep their count boxes on the same vertical line.
+  mark: { marginLeft: 17, marginRight: 17 },
+}), [COLORS]);
   const { data, loading, error, reload } = useApi(() => Picking.sheet(orderId), [orderId]);
   const [picks, setPicks] = React.useState({});
 
@@ -239,14 +254,4 @@ export default function PickerScreen({ role, orderId, party, onBack, onHandover,
   );
 }
 
-const styles = StyleSheet.create({
-  progressWrap: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 9 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-  choices: { flexDirection: 'row', gap: 6 },
-  // Matches the width of the two-disc pair beside it so rows in either state
-  // keep their count boxes on the same vertical line.
-  mark: { marginLeft: 17, marginRight: 17 },
-});
+

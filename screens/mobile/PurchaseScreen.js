@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Purchases, Items } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -33,6 +33,20 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * alerts screen a day later.
  */
 export default function PurchaseScreen({ role, nav, onNewItem, onOpenGit, onOpenTransfers }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  spaced: { marginTop: 13 },
+  line: { paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  lineHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  inputs: { flexDirection: 'row', alignItems: 'flex-end', gap: 9, marginTop: 10 },
+  remove: { paddingHorizontal: 10, paddingVertical: 13 },
+  addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  newItem: { marginTop: 11, alignItems: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
+  meta: { marginTop: 3 },
+}), [COLORS]);
   const history = useApi(() => Purchases.list(), []);
   const items = useApi(() => Items.list({ limit: 200 }), []);
 
@@ -243,16 +257,3 @@ export default function PurchaseScreen({ role, nav, onNewItem, onOpenGit, onOpen
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  spaced: { marginTop: 13 },
-  line: { paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  lineHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  inputs: { flexDirection: 'row', alignItems: 'flex-end', gap: 9, marginTop: 10 },
-  remove: { paddingHorizontal: 10, paddingVertical: 13 },
-  addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  newItem: { marginTop: 11, alignItems: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, gap: 10 },
-  meta: { marginTop: 3 },
-});

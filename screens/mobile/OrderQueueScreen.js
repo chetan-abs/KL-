@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Orders } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -32,6 +32,18 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 const OVERDUE_DAYS = 45;
 
 export default function OrderQueueScreen({ role, nav, onOpenOrder }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  // Flexed so a long trading name truncates instead of shoving the badges off
+  // the card's right edge.
+  body: { flex: 1, paddingHorizontal: 11 },
+  meta: { marginTop: 3 },
+  marks: { alignItems: 'flex-end', gap: 5 },
+  flag: { marginTop: 1 },
+  spaced: { marginTop: 12 },
+}), [COLORS]);
   const pending = useApi(() => Orders.list({ status: 'pending' }), []);
   const confirmed = useApi(() => Orders.list({ status: 'confirmed' }), []);
 
@@ -150,14 +162,3 @@ export default function OrderQueueScreen({ role, nav, onOpenOrder }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  // Flexed so a long trading name truncates instead of shoving the badges off
-  // the card's right edge.
-  body: { flex: 1, paddingHorizontal: 11 },
-  meta: { marginTop: 3 },
-  marks: { alignItems: 'flex-end', gap: 5 },
-  flag: { marginTop: 1 },
-  spaced: { marginTop: 12 },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { NEW_ITEM_DEFAULTS } from '../../constants/options';
 import { Items } from '../../services/endpoints';
 import { useAction } from '../../hooks/useApi';
@@ -29,6 +29,13 @@ import NoticeBar from '../../components/mobile/NoticeBar';
  * items.qty is a cache of movements, not a number anyone types.
  */
 export default function NewItemScreen({ role, nav }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  flex: { flex: 1 },
+  pair: { flexDirection: 'row', gap: 11 },
+  spaced: { marginTop: 13 },
+  margin: { marginTop: 10 },
+}), [COLORS]);
   const [name, setName] = React.useState('');
   const [brand, setBrand] = React.useState('polycab');
   const [category, setCategory] = React.useState('wire');
@@ -169,9 +176,3 @@ export default function NewItemScreen({ role, nav }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  pair: { flexDirection: 'row', gap: 11 },
-  spaced: { marginTop: 13 },
-  margin: { marginTop: 10 },
-});

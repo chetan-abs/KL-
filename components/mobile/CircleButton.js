@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import AppText from '../AppText';
 
 /**
@@ -11,11 +11,13 @@ import AppText from '../AppText';
  * decided one collapses to a single filled disc. Colour alone would not survive
  * that, so the glyph is always drawn.
  */
-const TONES = {
+function makeTONES(COLORS) {
+  return {
   success: { on: COLORS.actionApprove, off: COLORS.successRow, ink: COLORS.successDark },
   warning: { on: COLORS.warning, off: COLORS.warningRow, ink: COLORS.warningDark },
   danger: { on: COLORS.actionReject, off: COLORS.errorRow, ink: COLORS.actionRejectDark },
 };
+}
 
 export default function CircleButton({
   glyph,
@@ -26,6 +28,11 @@ export default function CircleButton({
   accessibilityLabel,
   style,
 }) {
+  const COLORS = useThemeColors();
+  const TONES = React.useMemo(() => makeTONES(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  disc: { alignItems: 'center', justifyContent: 'center' },
+}), [COLORS]);
   const palette = TONES[tone] || TONES.success;
 
   return (
@@ -53,6 +60,3 @@ export default function CircleButton({
   );
 }
 
-const styles = StyleSheet.create({
-  disc: { alignItems: 'center', justifyContent: 'center' },
-});

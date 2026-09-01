@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Picking, Verification, Billing } from '../../services/endpoints';
 import { useApi } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
@@ -26,7 +26,8 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * everyone's — a picker never sees "invoiced" and should not have a branch that
  * could show it.
  */
-const VARIANTS = {
+function makeVARIANTS(COLORS) {
+  return {
   pick: {
     title: 'To Pick',
     empty: 'Nothing waiting in the godown.',
@@ -91,8 +92,18 @@ const VARIANTS = {
     },
   },
 };
+}
 
 export default function WorkQueueScreen({ role, variant, nav, onOpen }) {
+  const COLORS = useThemeColors();
+  const VARIANTS = React.useMemo(() => makeVARIANTS(COLORS), [COLORS]);
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1, paddingHorizontal: 11 },
+  meta: { marginTop: 3 },
+  bar: { marginTop: 7 },
+}), [COLORS]);
   const config = VARIANTS[variant];
   const { data, loading, error, refreshing, reload, refresh } = useApi(config.fetch, [variant]);
 
@@ -167,10 +178,3 @@ export default function WorkQueueScreen({ role, variant, nav, onOpen }) {
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1, paddingHorizontal: 11 },
-  meta: { marginTop: 3 },
-  bar: { marginTop: 7 },
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { PERMISSION_PAGES, actionsFor, WILDCARD } from '../../constants/permissions';
 import { SHIFTS } from '../../constants/options';
 import { Users } from '../../services/endpoints';
@@ -41,6 +41,35 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * their own rights is an escalation route.
  */
 export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  person: { marginBottom: 2 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  headBody: { flex: 1 },
+  meta: { marginTop: 3 },
+  grid: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  selfWarn: { marginBottom: 12 },
+  pageRow: { marginBottom: 12 },
+  pageLabel: { marginBottom: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  chipOn: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
+  save: { marginTop: 6 },
+  workBlock: {
+    marginBottom: 16, paddingBottom: 16,
+    borderBottomWidth: 1, borderBottomColor: COLORS.borderLight,
+  },
+  workLabel: { letterSpacing: 0.6, marginBottom: 10 },
+  spaced: { marginTop: 11 },
+  pwNotice: { marginBottom: 10 },
+}), [COLORS]);
   const { data, loading, error, refreshing, reload, refresh } = useApi(() => Users.list(), []);
   const [openId, setOpenId] = React.useState(null);
   const [draft, setDraft] = React.useState(null);
@@ -348,31 +377,3 @@ export default function PeopleScreen({ role, user, nav, onNewEmployee }) {
   );
 }
 
-const styles = StyleSheet.create({
-  person: { marginBottom: 2 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  headBody: { flex: 1 },
-  meta: { marginTop: 3 },
-  grid: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  selfWarn: { marginBottom: 12 },
-  pageRow: { marginBottom: 12 },
-  pageLabel: { marginBottom: 6 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  chipOn: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
-  save: { marginTop: 6 },
-  workBlock: {
-    marginBottom: 16, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: COLORS.borderLight,
-  },
-  workLabel: { letterSpacing: 0.6, marginBottom: 10 },
-  spaced: { marginTop: 11 },
-  pwNotice: { marginBottom: 10 },
-});

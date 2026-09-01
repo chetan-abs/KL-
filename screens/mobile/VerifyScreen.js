@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../context/ThemeContext';
 import { Orders, Verification } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { confirmAction, showAlert } from '../../services/confirm';
@@ -29,6 +29,13 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * missing two — is only cheap while the goods are in front of him.
  */
 export default function VerifyScreen({ role, orderId, party, onBack, onVerified, nav}) {
+  const COLORS = useThemeColors();
+  const styles = React.useMemo(() => StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 11 },
+  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  body: { flex: 1 },
+  meta: { marginTop: 3 },
+}), [COLORS]);
   const { data, loading, error, reload } = useApi(() => Orders.get(orderId), [orderId]);
   const [counts, setCounts] = React.useState({});
 
@@ -163,9 +170,4 @@ export default function VerifyScreen({ role, orderId, party, onBack, onVerified,
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 11 },
-  ruled: { borderTopWidth: 1, borderTopColor: COLORS.borderLight },
-  body: { flex: 1 },
-  meta: { marginTop: 3 },
-});
+
