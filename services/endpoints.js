@@ -79,12 +79,22 @@ export const Verification = {
 export const Billing = {
   queue: () => body(api.get('/invoices')),
   get: (id) => body(api.get(`/invoices/${id}`)),
-  raise: (orderId, lines) => body(api.post('/invoices', { order_id: orderId, lines })),
+  /** roundOff — 4.5/Billing, capped server-side at ±₹10 regardless of what is sent. */
+  raise: (orderId, lines, roundOff) =>
+    body(api.post('/invoices', { order_id: orderId, lines, round_off: roundOff })),
   creditNotes: () => body(api.get('/invoices/credit-notes')),
   raiseCreditNote: (payload) => body(api.post('/invoices/credit-notes', payload)),
   issueCreditNote: (id) => body(api.post(`/invoices/credit-notes/${id}/issue`, {})),
   /** 4.5 — Original, Duplicate and Triplicate, as three pages of one PDF. */
   printUrl: (invoiceId) => `${api.defaults.baseURL}/documents/invoice/${invoiceId}.pdf`,
+
+  /**
+   * Billing, September 2026 — Sibu's exception-based review queue. Every
+   * invoice here has already issued; this is only what still needs a look
+   * ("reviewed daily", never a pre-issue gate).
+   */
+  flagged: (reviewed) => body(api.get('/invoices/flagged', { params: { reviewed } })),
+  reviewInvoice: (id) => body(api.post(`/invoices/${id}/review`, {})),
 };
 
 // ---------------------------------------------------------------------------
@@ -98,6 +108,12 @@ export const Dispatch = {
   myRoute: (date) => body(api.get('/dispatch/route', { params: { date } })),
   setActive: (stopId) => body(api.post(`/dispatch/stops/${stopId}/active`, {})),
   deliver: (orderId, payload) => body(api.post(`/dispatch/orders/${orderId}/deliver`, payload)),
+  /**
+   * 4.4 — "Collection at delivery" (NEW). Cash/cheque collected against the
+   * invoice, right there at the stop — a cheque needs `cheque_no` and
+   * `photo_id` (the photograph of the cheque itself, mandatory).
+   */
+  collect: (orderId, payload) => body(api.post(`/dispatch/orders/${orderId}/collect`, payload)),
   fail: (orderId, payload) => body(api.post(`/dispatch/orders/${orderId}/fail`, payload)),
 
   /** 4.6 — the driver signs their own sheet. Nobody signs on their behalf. */

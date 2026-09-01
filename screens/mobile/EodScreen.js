@@ -168,7 +168,8 @@ export default function EodScreen({ role, nav, onOpenHandover }) {
                 overrides per person, so a below-rate sale that "waited for
                 approval after billing" (which is a loss, not an approval) or
                 a quietly-lifted block is caught here rather than nowhere. */}
-            {(data?.exceptions?.below_rate_requests?.length || data?.exceptions?.credit_overrides?.length) ? (
+            {(data?.exceptions?.below_rate_requests?.length || data?.exceptions?.credit_overrides?.length
+              || data?.exceptions?.urgent_orders?.length) ? (
               <Card title="Exceptions today" flush>
                 {(data.exceptions.below_rate_requests || []).map((r, i) => (
                   <DetailRow
@@ -181,10 +182,19 @@ export default function EodScreen({ role, nav, onOpenHandover }) {
                 {(data.exceptions.credit_overrides || []).map((r, i) => (
                   <DetailRow
                     key={`ov-${r.overridden_by}-${r.kind}-${i}`}
-                    label={`${r.overridden_by_name || r.overridden_by} — ${r.kind === 'credit_limit' ? 'credit limit override' : '60-day override'}`}
+                    label={`${r.overridden_by_name || r.overridden_by} — ${r.kind === 'credit_limit' ? 'credit limit override' : r.kind === 'urgent_quota' ? 'urgent quota override' : '60-day override'}`}
                     value={`${r.n}`}
                     tone="danger"
-                    last={i === (data.exceptions.credit_overrides.length - 1) && !data.exceptions.below_rate_requests?.length}
+                  />
+                ))}
+                {/* 4.3 — "urgent count per person, with reason". */}
+                {(data.exceptions.urgent_orders || []).map((r, i, arr) => (
+                  <DetailRow
+                    key={`ur-${r.created_by}-${i}`}
+                    label={`${r.created_by_name || r.created_by} — urgent (${r.urgency_reason})`}
+                    value={`${r.n}`}
+                    tone="warning"
+                    last={i === arr.length - 1}
                   />
                 ))}
               </Card>

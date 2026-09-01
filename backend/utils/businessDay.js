@@ -107,6 +107,41 @@ function requestedDay(value) {
   return isDateString(value) ? value : businessDay();
 }
 
+/**
+ * 4.3, September 2026 — "Dispatch times are fixed and the slot is derived,
+ * not typed." Four rows, read in order:
+ *
+ *   urgent, before 10:30   the next vehicle, 11:30, same day
+ *   before 10:30           the 3:30 vehicle, same day
+ *   before 2:30            the 3:30 vehicle, same day (same slot as above —
+ *                          the 10:30 cutoff only matters for urgent)
+ *   after 2:30             the 11:30 vehicle, the NEXT day
+ *
+ * Takes wall-clock 'HH:MM:SS' (businessTime()'s own format) rather than a
+ * Date, so it is easy to call with a punch time read back out of the
+ * database later without re-deriving the timezone conversion.
+ */
+function deriveDeliverySlot(punchTimeHHMMSS, isUrgent, punchDate = businessDay()) {
+  const minutes = minutesBetween('00:00:00', punchTimeHHMMSS);
+  const before1030 = minutes < 10 * 60 + 30;
+  const before1430 = minutes < 14 * 60 + 30;
+
+  if (isUrgent && before1030) {
+    return { label: '11:30 vehicle (today)', date: punchDate, time: '11:30:00' };
+  }
+  if (before1430) {
+    return { label: '3:30 vehicle (today)', date: punchDate, time: '15:30:00' };
+  }
+  return { label: '11:30 vehicle (next day)', date: addDaysToDateString(punchDate, 1), time: '11:30:00' };
+}
+
+/** 'YYYY-MM-DD' plus N days, without pulling in a date library for one call. */
+function addDaysToDateString(dateString, days) {
+  const [y, m, d] = dateString.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return dt.toISOString().slice(0, 10);
+}
+
 module.exports = {
   businessDay,
   businessTime,
@@ -114,6 +149,7 @@ module.exports = {
   minutesBetween,
   isDateString,
   requestedDay,
+  deriveDeliverySlot,
   timezone,
   DEFAULT_TIMEZONE,
 };

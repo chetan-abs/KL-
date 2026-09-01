@@ -52,6 +52,16 @@ export default function DeliveryScreen({ role, stop, onBack, onDone, nav}) {
   const [failPhotoRef, setFailPhotoRef] = React.useState(null);
   const [error, setError] = React.useState(null);
 
+  // 4.4 — "Collection at delivery" (NEW). Optional: not every stop collects
+  // money (a credit account settles later), so this never blocks Mark
+  // Delivered — it is its own action, after the stop is closed.
+  const [collectMode, setCollectMode] = React.useState('cash');
+  const [collectAmount, setCollectAmount] = React.useState('');
+  const [chequeNo, setChequeNo] = React.useState('');
+  const [chequeBank, setChequeBank] = React.useState('');
+  const [chequePhotoId, setChequePhotoId] = React.useState(null);
+  const [collected, setCollected] = React.useState(false);
+
   /** Best-effort position; a delivery is never blocked on it. */
   async function tryFix() {
     try {
@@ -67,12 +77,49 @@ export default function DeliveryScreen({ role, stop, onBack, onDone, nav}) {
       const ref = await captureAndUpload({ refType: 'order', refId: orderId });
       if (!ref) return null; // cancelled — not a failure
       if (which === 'fail') setFailPhotoRef(ref);
+      else if (which === 'cheque') setChequePhotoId(ref);
       else setPhotoRef(ref);
       setError(null);
       return ref;
     },
     { onFail: (message) => setError(message) }
   );
+
+  const collect = useAction(
+    () =>
+      Dispatch.collect(orderId, {
+        mode: collectMode,
+        amount: Number(collectAmount),
+        cheque_no: collectMode === 'cheque' ? chequeNo.trim() : undefined,
+        bank_name: collectMode === 'cheque' ? chequeBank.trim() : undefined,
+        photo_id: collectMode === 'cheque' ? chequePhotoId : undefined,
+      }),
+    {
+      onDone: () => {
+        setCollected(true);
+        showAlert('Collection recorded', `₹${collectAmount} (${collectMode}) collected and receipted.`);
+      },
+      onFail: (message) => showAlert('Could not record collection', message),
+    }
+  );
+
+  function recordCollection() {
+    const value = Number(collectAmount);
+    if (!Number.isFinite(value) || value <= 0) {
+      return showAlert('Amount needed', 'Enter what was actually collected.');
+    }
+    if (collectMode === 'cheque' && !chequeNo.trim()) {
+      return showAlert('Cheque number needed', 'The cheque number is required.');
+    }
+    if (collectMode === 'cheque' && !chequePhotoId) {
+      return showAlert('Cheque photo needed', 'A photo of the cheque is required.');
+    }
+    confirmAction(
+      'Record this collection?',
+      `₹${value} by ${collectMode}, against #${orderId}.`,
+      collect.run
+    );
+  }
 
   const deliver = useAction(
     async () => {
@@ -198,6 +245,61 @@ export default function DeliveryScreen({ role, stop, onBack, onDone, nav}) {
         loadingLabel="Recording"
         onPress={markDelivered}
       />
+
+      {/* 4.4 — "Collection at delivery" (NEW). Cash or cheque, recorded
+          against the invoice immediately, reconciled to Sibu's cash count
+          and, for a cheque, Damodar's deposit queue. */}
+      <Card title="Collection at delivery (if any)">
+        <Select
+          value={collectMode}
+          options={[
+            { value: 'cash', label: 'Cash' },
+            { value: 'cheque', label: 'Cheque' },
+            { value: 'upi', label: 'UPI' },
+          ]}
+          onChange={setCollectMode}
+        />
+        <Field
+          style={styles.spaced}
+          label="Amount collected"
+          value={collectAmount}
+          onChangeText={(v) => setCollectAmount(v.replace(/[^0-9.]/g, ''))}
+          keyboardType="decimal-pad"
+        />
+        {collectMode === 'cheque' ? (
+          <>
+            <Field
+              style={styles.spaced}
+              label="Cheque number"
+              value={chequeNo}
+              onChangeText={setChequeNo}
+            />
+            <Field
+              style={styles.spaced}
+              label="Bank"
+              value={chequeBank}
+              onChangeText={setChequeBank}
+            />
+            <PhotoBox
+              compact
+              glyph="🧾"
+              title={chequePhotoId ? 'Cheque photo captured' : 'Photo of the cheque (mandatory)'}
+              captured={Boolean(chequePhotoId)}
+              onPress={() => capture.run('cheque')}
+              style={styles.failPhoto}
+            />
+          </>
+        ) : null}
+        <ActionButton
+          label={collected ? 'Collected ✓' : 'Record collection'}
+          tone={collected ? 'neutral' : 'brand'}
+          disabled={collected}
+          loading={collect.busy}
+          loadingLabel="Recording"
+          onPress={recordCollection}
+          style={styles.failButton}
+        />
+      </Card>
 
       <Card title="If not delivered">
         <Select value={reason} options={UNDELIVERED_REASONS} onChange={setReason} />

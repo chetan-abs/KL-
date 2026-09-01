@@ -3,6 +3,7 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 
 import { useThemeColors } from '../../context/ThemeContext';
 import { Orders, Items, Customers } from '../../services/endpoints';
+import { URGENT_REASONS } from '../../constants/options';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
 import { formatDate } from '../../utils/datetime';
@@ -47,6 +48,7 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
   inputs: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 10 },
   remove: { paddingHorizontal: 8, paddingVertical: 13 },
   addWrap: { padding: 14, borderTopWidth: 1, borderTopColor: COLORS.borderLight },
+  spaced: { marginTop: 10 },
 }), [COLORS]);
   const parties = useApi(() => Customers.list({ limit: 200 }), []);
   const items = useApi(() => Items.list({ limit: 200 }), []);
@@ -55,6 +57,10 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
   const [lines, setLines] = React.useState([]);
   const [notes, setNotes] = React.useState('');
   const [picking, setPicking] = React.useState(null);
+  // 4.3 — urgent needs a reason from the fixed list; the daily quota and the
+  // resulting delivery slot are both decided server-side.
+  const [isUrgent, setIsUrgent] = React.useState(false);
+  const [urgencyReason, setUrgencyReason] = React.useState(null);
 
   // 3.3 — the Party Information Card. Fetched the moment a party is chosen,
   // so a blocked credit limit or a 60-day overdue balance is obvious before
@@ -108,7 +114,8 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
   const willCrossLimit = info && info.credit_limit > 0 && projectedFree < 0;
   const willBlock = willCrossLimit || info?.overdue_60;
 
-  const ready = customerId && rows.length > 0 && rows.every((r) => Number(r.qty) > 0);
+  const ready = customerId && rows.length > 0 && rows.every((r) => Number(r.qty) > 0)
+    && (!isUrgent || urgencyReason);
 
   // 3.3 — CHANGED FROM v1: both are a hard block at punch now, not a
   // notification. `override` is only ever sent when the block already fired
@@ -123,17 +130,22 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
         scheme: Number(r.scheme) || 0,
       })),
       notes: notes.trim(),
+      is_urgent: isUrgent,
+      urgency_reason: isUrgent ? urgencyReason : null,
       ...(override ? { override: true, override_note: 'Overridden at punch by ' + role.name } : {}),
     });
 
   const create = useAction(() => punch(false), {
+    // 4.2/4.3 — the server already says which happened (auto-approved
+    // straight to picking, or sent for approval and why); its own message
+    // is shown as is rather than a client guess.
     onDone: (result) => {
-      showAlert('Order placed', `Sent for approval — ${rupees(result.total_amount)}.`);
+      showAlert(result.status === 'approved' ? 'Order placed' : 'Sent for approval', result.message);
       onSaved?.();
     },
     onFail: (message, err) => {
       const code = err?.response?.data?.code;
-      const blocked = code === 'CREDIT_LIMIT_EXCEEDED' || code === 'OVERDUE_60_BLOCK';
+      const blocked = ['CREDIT_LIMIT_EXCEEDED', 'OVERDUE_60_BLOCK', 'URGENT_QUOTA_EXCEEDED'].includes(code);
       if (blocked && role.isOwner) {
         confirmAction(
           'Override and place anyway?',
@@ -148,7 +160,7 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
 
   const override = useAction(() => punch(true), {
     onDone: (result) => {
-      showAlert('Order placed (overridden)', `Sent for approval — ${rupees(result.total_amount)}.`);
+      showAlert('Order placed (overridden)', result.message);
       onSaved?.();
     },
     onFail: (message) => showAlert('Could not place', message),
@@ -335,6 +347,29 @@ export default function OrderWindowScreen({ role, onBack, onSaved, nav}) {
             <DetailRow label="Grand total" value={rupees(subTotal + gstTotal, { decimals: 'auto' })} tone="brand" last />
           </Card>
         ) : null}
+
+        {/* 4.3 — "Reason mandatory, from a fixed list." Marking urgent
+            counts against the daily quota, so the toggle is deliberately a
+            separate step, not the default. */}
+        <Card title="Urgent">
+          <ActionButton
+            tone={isUrgent ? 'reject' : 'neutral'}
+            label={isUrgent ? 'Urgent — tap to clear' : 'Mark this order urgent'}
+            onPress={() => {
+              setIsUrgent((v) => !v);
+              if (isUrgent) setUrgencyReason(null);
+            }}
+          />
+          {isUrgent ? (
+            <Select
+              style={styles.spaced}
+              value={urgencyReason}
+              options={URGENT_REASONS}
+              onChange={setUrgencyReason}
+              placeholder="Why is this urgent?"
+            />
+          ) : null}
+        </Card>
 
         <Card title="Instructions">
           <Field

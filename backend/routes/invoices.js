@@ -12,12 +12,13 @@
  * stay off the printed document (R21), and the way that is guaranteed is that
  * the billing path has no reason to join those tables at all.
  */
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { numericId } = require('../middleware/params');
-const { money, transition, notify, nextDocNumber, recomputeBalance } = require('../utils/workflow');
+const { money, transition, notify, nextDocNumber, recomputeBalance, usersWhoCan } = require('../utils/workflow');
 const { businessDay } = require('../utils/businessDay');
 const { qualifyingValue } = require('../utils/pricing');
 const { creditPurchase } = require('../utils/scheme');
@@ -31,6 +32,14 @@ router.use(authenticate);
 // Rejects a non-numeric :id before any handler binds it into SQL.
 numericId(router);
 
+// Billing, September 2026 sheet — "discount above the set percentage" has
+// no figure given, same treatment as every other unstated threshold in this
+// project: left disabled (0) until Yash names one, rather than guessing.
+const BILL_REVIEW_DISCOUNT_THRESHOLD = Number(process.env.BILL_REVIEW_DISCOUNT_THRESHOLD) || 0;
+const BILL_REVIEW_CREDIT_VALUE_THRESHOLD = Number(process.env.BILL_REVIEW_CREDIT_VALUE_THRESHOLD) || 0;
+// "Capped at ₹10 per invoice" — the one figure the sheet does state.
+const ROUND_OFF_CAP = 10;
+
 // GET /api/invoices — what is waiting to be billed, and what already was
 router.get('/', requirePermission('billing.view'), async (req, res, next) => {
   try {
@@ -43,13 +52,54 @@ router.get('/', requirePermission('billing.view'), async (req, res, next) => {
     );
 
     const [issued] = await pool.query(
-      `SELECT i.id, i.invoice_no, i.order_id, i.party_name, i.grand_total, i.invoice_date, i.status
+      `SELECT i.id, i.invoice_no, i.order_id, i.party_name, i.grand_total, i.invoice_date, i.status,
+              i.flagged_reason, i.reviewed_by, i.reviewed_at
          FROM invoices i
         ORDER BY i.id DESC
         LIMIT 50`
     );
 
     res.json({ awaiting: pending, invoices: issued });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/invoices/flagged — Sibu's exception review queue (billing,
+ * September 2026). "Reviewed daily", not a pre-issue gate — every invoice
+ * here has already issued; this is only what still needs a look.
+ */
+router.get('/flagged', requirePermission('cash.manage'), async (req, res, next) => {
+  try {
+    const reviewed = req.query.reviewed === 'true';
+    const [rows] = await pool.query(
+      `SELECT i.id, i.invoice_no, i.party_name, i.grand_total, i.invoice_date,
+              i.flagged_reason, i.reviewed_by, i.reviewed_at, u.name AS reviewed_by_name
+         FROM invoices i
+         LEFT JOIN users u ON u.id = i.reviewed_by
+        WHERE i.flagged_reason IS NOT NULL AND i.reviewed_at IS ${reviewed ? 'NOT NULL' : 'NULL'}
+        ORDER BY i.id DESC
+        LIMIT 200`
+    );
+    res.json({ reviewed, invoices: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** POST /api/invoices/:id/review — Sibu clears a flagged invoice. */
+router.post('/:id/review', requirePermission('cash.manage'), async (req, res, next) => {
+  try {
+    const [result] = await pool.query(
+      `UPDATE invoices SET reviewed_by = ?, reviewed_at = NOW()
+        WHERE id = ? AND flagged_reason IS NOT NULL`,
+      [req.user.id, req.params.id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'No flagged invoice with that id, or already reviewed.' });
+    }
+    res.json({ message: 'Marked reviewed', invoice_id: Number(req.params.id) });
   } catch (err) {
     next(err);
   }
@@ -162,6 +212,24 @@ router.post('/credit-notes/:id/issue', requirePermission('billing.create'), asyn
       userId: req.user.id,
     });
 
+    // Billing, September 2026 — "credit/debit note above the set value"
+    // is one of Sibu's exception-review triggers, same non-blocking flag
+    // as an invoice's own review reasons.
+    if (BILL_REVIEW_CREDIT_VALUE_THRESHOLD > 0 && Number(note.amount) > BILL_REVIEW_CREDIT_VALUE_THRESHOLD) {
+      for (const reviewer of await usersWhoCan(conn, 'cash.manage')) {
+        await notify(conn, {
+          userId: reviewer,
+          tone: 'warning',
+          title: `Credit note above threshold — ${note.note_no}`,
+          body: `${note.party_name} — ₹${Number(note.amount).toFixed(2)}, above the `
+            + `₹${BILL_REVIEW_CREDIT_VALUE_THRESHOLD.toFixed(2)} review threshold.`,
+          actor: req.user.name,
+          refType: 'credit_note',
+          refId: note.id,
+        });
+      }
+    }
+
     await conn.commit();
     res.json({ message: 'Credit note issued' });
   } catch (err) {
@@ -262,16 +330,29 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
     );
     const costById = new Map(costs.map((row) => [row.item_id, Number(row.cost)]));
 
+    // Billing, September 2026 — "GST or HSN mismatch" is against the item
+    // MASTER as it stands today, not the snapshot on the order line: the
+    // snapshot is frozen at order time on purpose (so a later master edit
+    // never rewrites history), which is exactly why it can drift from a
+    // master corrected since.
+    const [masters] = await conn.query(
+      'SELECT masterid, hsn, gst_percent FROM items WHERE masterid IN (?)',
+      [lines.map((l) => l.item_id)]
+    );
+    const masterById = new Map(masters.map((row) => [row.masterid, row]));
+
     let subTotal = 0;
     let gstTotal = 0;
     const billed = [];
+    const flagReasons = [];
 
     for (const line of lines) {
       const qtyBilled = Number(line.billed_qty);
       if (qtyBilled <= 0) continue; // nothing arrived; nothing to charge for
 
       const override = rateById.get(line.id);
-      const rate = Number.isFinite(override) && override >= 0 ? money(override) : Number(line.rate);
+      const manuallyChanged = Number.isFinite(override) && override >= 0;
+      const rate = manuallyChanged ? money(override) : Number(line.rate);
       const discount = Number(line.discount) || 0;
       const gstPercent = Number(line.gst_percent) || 0;
 
@@ -282,6 +363,29 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
       gstTotal = money(gstTotal + gst);
 
       const cost = costById.get(line.item_id);
+      const belowCost = cost !== undefined && rate < cost;
+
+      // Exception-based bill verification (billing, September 2026): "Sibu
+      // reviews only" these — everything else auto-issues. A block would
+      // recreate exactly the one-at-a-time bottleneck removing the old
+      // approval step was meant to fix ("100% manual checking is not
+      // control — it is a queue"), so this only ever FLAGS; see
+      // `flagged_reason` below and 022's migration comment.
+      if (manuallyChanged) flagReasons.push(`${line.item_name}: rate manually changed`);
+      if (belowCost) flagReasons.push(`${line.item_name}: below cost`);
+      if (BILL_REVIEW_DISCOUNT_THRESHOLD > 0 && discount > BILL_REVIEW_DISCOUNT_THRESHOLD) {
+        flagReasons.push(`${line.item_name}: discount ${discount}% above the ${BILL_REVIEW_DISCOUNT_THRESHOLD}% threshold`);
+      }
+      const master = masterById.get(line.item_id);
+      if (master) {
+        if (String(master.hsn || '') !== String(line.hsn || '')) {
+          flagReasons.push(`${line.item_name}: HSN mismatch (billed ${line.hsn || '—'}, master ${master.hsn || '—'})`);
+        }
+        if (Number(master.gst_percent) !== gstPercent) {
+          flagReasons.push(`${line.item_name}: GST mismatch (billed ${gstPercent}%, master ${master.gst_percent}%)`);
+        }
+      }
+
       billed.push({
         item_id: line.item_id,
         item_name: line.item_name,
@@ -292,7 +396,7 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
         gst_percent: gstPercent,
         gst_amount: gst,
         total: money(net + gst),
-        below_cost: cost !== undefined && rate < cost,
+        below_cost: belowCost,
         // Kept for the two things written after the invoice exists: the
         // qualifying value the electrician's scheme earns, and the rate the
         // next salesman is shown as "previous".
@@ -300,6 +404,19 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
         scheme_weightage: line.scheme_weightage,
       });
     }
+
+    // "Plus a daily random 10% sample." Deterministic on (order id, day),
+    // the same technique routes/workflow.js uses for verification's own
+    // 10% sample — stable if this ever needed re-deriving, not a fresh
+    // coin flip that could disagree with itself.
+    const sampleHash = crypto.createHash('md5').update(`${orderId}:${businessDay()}`).digest();
+    if (sampleHash.readUInt8(1) % 10 === 0) flagReasons.push('daily random 10% sample');
+
+    // "Round-off: capped at ₹10 per invoice." Gaurav's discretionary
+    // adjustment at billing time, bounded so it cannot become a second,
+    // unaudited discount channel.
+    const roundOffRaw = Number(req.body?.round_off) || 0;
+    const roundOff = Math.max(-ROUND_OFF_CAP, Math.min(ROUND_OFF_CAP, money(roundOffRaw)));
 
     if (!billed.length) {
       await conn.rollback();
@@ -319,8 +436,8 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
     const [inserted] = await conn.query(
       `INSERT INTO invoices
          (invoice_no, order_id, customer_id, party_name, party_gstin, invoice_date,
-          sub_total, gst_amount, grand_total, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          sub_total, gst_amount, grand_total, round_off, flagged_reason, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         invoiceNo,
         orderId,
@@ -330,7 +447,9 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
         businessDay(),
         subTotal,
         gstTotal,
-        money(subTotal + gstTotal),
+        money(subTotal + gstTotal + roundOff),
+        roundOff,
+        flagReasons.length ? flagReasons.join('; ') : null,
         req.user.id,
       ]
     );
@@ -442,11 +561,31 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
       });
     }
 
+    // Billing, September 2026 — Sibu's exception review queue. The invoice
+    // has already issued (Tally push above and all); this only tells him
+    // there is something to look at "reviewed daily", not something waiting
+    // on him before anything happens.
+    if (flagReasons.length) {
+      for (const reviewer of await usersWhoCan(conn, 'cash.manage')) {
+        await notify(conn, {
+          userId: reviewer,
+          tone: 'warning',
+          title: `Flagged for review — ${invoiceNo}`,
+          body: flagReasons.join('; '),
+          actor: req.user.name,
+          refType: 'invoice',
+          refId: invoiceId,
+        });
+      }
+    }
+
     await conn.commit();
     res.status(201).json({
       message: 'Invoice created',
       invoice_id: invoiceId,
       invoice_no: invoiceNo,
+      flagged_reason: flagReasons.length ? flagReasons.join('; ') : null,
+      round_off: roundOff,
       sub_total: subTotal,
       gst_amount: gstTotal,
       grand_total: money(subTotal + gstTotal),

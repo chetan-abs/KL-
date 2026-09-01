@@ -27,12 +27,14 @@
  * reverse, so a router-level guard would lock out every account holding only the
  * action grant it was meant to admit.
  */
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { numericId } = require('../middleware/params');
 const { transition, notify, usersWithGrant, qty } = require('../utils/workflow');
+const { businessDay } = require('../utils/businessDay');
 const {
   enqueue: tallyEnqueue, salesOrderXml, config: tallyConfig,
 } = require('../utils/tally');
@@ -569,6 +571,14 @@ router.post('/orders/:id/handover', requirePermission('picking.record'), async (
       [orderId]
     );
     if (newPicker) exceptionReasons.push(`${newPicker.name} is a new picker (first 30 days)`);
+
+    // "The order falls in the daily random 10% sample." Deterministic rather
+    // than a fresh Math.random() per call, so an order sampled once stays
+    // sampled if handover is somehow retried — MD5 of (order id, today) taken
+    // modulo 10 gives a stable, roughly-uniform 1-in-10 without a table to
+    // track which orders were already drawn today.
+    const sampleHash = crypto.createHash('md5').update(`${orderId}:${businessDay()}`).digest();
+    if (sampleHash.readUInt8(0) % 10 === 0) exceptionReasons.push('daily random 10% sample');
 
     let finalStatus = 'picked';
     if (!exceptionReasons.length) {

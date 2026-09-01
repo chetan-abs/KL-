@@ -747,6 +747,20 @@ router.get('/eod', requirePermission('eod.view'), async (req, res, next) => {
       [day]
     );
 
+    // 4.3 — "Reported: urgent count per person, with reason, in the EOD
+    // report." Grouped by person and reason rather than a bare count, so
+    // the same "without a cap, half of all orders are urgent" drift is
+    // visible in WHY, not only how many.
+    const [urgent] = await pool.query(
+      `SELECT o.created_by, u.name AS created_by_name, o.urgency_reason, COUNT(*) AS n
+         FROM orders o
+         LEFT JOIN users u ON u.id = o.created_by
+        WHERE o.order_date = ? AND o.is_urgent = TRUE
+        GROUP BY o.created_by, u.name, o.urgency_reason
+        ORDER BY o.created_by`,
+      [day]
+    );
+
     res.json({
       date: day,
       invoices: invoiced.invoices,
@@ -758,6 +772,7 @@ router.get('/eod', requirePermission('eod.view'), async (req, res, next) => {
       exceptions: {
         below_rate_requests: belowRate,
         credit_overrides: overrides,
+        urgent_orders: urgent,
       },
     });
   } catch (err) {

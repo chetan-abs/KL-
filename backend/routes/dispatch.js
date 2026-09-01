@@ -8,6 +8,7 @@
  *   GET  /api/dispatch/route             the driver's own run
  *   POST /api/dispatch/stops/:id/active  "I am going here next"
  *   POST /api/dispatch/orders/:id/deliver    delivered, with proof (R06)
+ *   POST /api/dispatch/orders/:id/collect    cash/cheque collected (4.4, NEW)
  *   POST /api/dispatch/orders/:id/fail       undelivered, with a reason
  */
 const express = require('express');
@@ -15,9 +16,10 @@ const router = express.Router();
 const pool = require('../config/db');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { numericId } = require('../middleware/params');
-const { transition, notify, usersWithGrant } = require('../utils/workflow');
+const { transition, notify, usersWithGrant, usersWhoCan, money } = require('../utils/workflow');
 const { businessDay, businessTime, requestedDay } = require('../utils/businessDay');
 const { userCan } = require('../utils/permissions');
+const { recordPayment } = require('./payments');
 
 router.use(authenticate);
 
@@ -495,6 +497,120 @@ router.post('/orders/:id/deliver', async (req, res, next) => {
     res.json({ message: 'Delivered', order_id: orderId });
   } catch (err) {
     await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
+});
+
+/**
+ * POST /api/dispatch/orders/:id/collect — 4.4, "Collection at delivery" (NEW).
+ *
+ * "The driver records cash or cheque collected at the point of delivery,
+ * with a photo of the cheque, against that invoice, immediately. Reconciles
+ * to the daily cash count and to Damodar's cheque deposits."
+ *
+ * Scoped to the driver's own stop, the same way `/deliver` and `/fail` are —
+ * every route a driver uses acts on `req.user.id`, never a name in the
+ * request body, which is what makes a driver unable to record a collection
+ * against a stop that is not theirs. The receipt itself goes through
+ * `recordPayment` (routes/payments.js) — the same FIFO allocation and cash
+ * discount a desk-recorded receipt gets, because money collected at the
+ * door is not a different kind of fact from money collected at the counter.
+ */
+router.post('/orders/:id/collect', async (req, res, next) => {
+  const orderId = Number(req.params.id);
+  const { mode, amount, cheque_no, bank_name, cheque_date, photo_id } = req.body || {};
+
+  if (!['cash', 'cheque', 'upi'].includes(mode)) {
+    return res.status(400).json({ error: 'mode must be cash, cheque or upi' });
+  }
+  const value = money(Number(amount));
+  if (!Number.isFinite(value) || value <= 0) {
+    return res.status(400).json({ error: 'A collection needs an amount greater than zero' });
+  }
+  if (mode === 'cheque') {
+    if (!String(cheque_no || '').trim()) return res.status(400).json({ error: 'cheque_no is required' });
+    if (!photo_id) return res.status(400).json({ error: 'A photo of the cheque is required', code: 'PHOTO_REQUIRED' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // The driver may only collect against their own stop — same ownership
+    // check `/deliver` and `/fail` use.
+    const [[stop]] = await conn.query(
+      `SELECT st.id, o.customer_id, o.so_number
+         FROM dispatch_stops st
+         JOIN orders o ON o.order_id = st.order_id
+         JOIN dispatch_sheets s ON s.id = st.sheet_id
+        WHERE st.order_id = ? AND s.driver_id = ?`,
+      [orderId, req.user.id]
+    );
+    if (!stop) {
+      await conn.rollback();
+      return res.status(404).json({ error: 'That order is not on your sheet' });
+    }
+
+    const [[invoice]] = await conn.query(
+      "SELECT id FROM invoices WHERE order_id = ? AND status = 'issued'",
+      [orderId]
+    );
+    if (!invoice) {
+      await conn.rollback();
+      return res.status(409).json({
+        error: 'That order has no issued invoice to collect against.', code: 'NOT_INVOICED' });
+    }
+
+    let chequeId = null;
+    if (mode === 'cheque') {
+      const [chequeResult] = await conn.query(
+        `INSERT INTO cheques
+           (cheque_no, customer_id, bank_name, amount, cheque_date, photo_id, collected_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [String(cheque_no).trim(), stop.customer_id, bank_name || null, value,
+          requestedDay(cheque_date) || businessDay(), Number(photo_id), req.user.id]
+      );
+      chequeId = chequeResult.insertId;
+    }
+
+    const result = await recordPayment(conn, {
+      customerId: stop.customer_id,
+      invoiceId: invoice.id,
+      chequeId,
+      amount: value,
+      mode,
+      note: `Collected at delivery, ${stop.so_number}`,
+      userId: req.user.id,
+    });
+
+    // Reconciled to the daily cash count (Sibu) and, for a cheque, to
+    // Damodar's own deposit queue — both need to hear about it immediately,
+    // not discover it at EOD. `usersWhoCan`, not `usersWithGrant`: these are
+    // dotted actions, and the area grant (Sibu's `cheques`) must satisfy them
+    // too — see the R-01 note on why the two are not interchangeable.
+    const recipients = new Set(await usersWhoCan(conn, 'cash.manage'));
+    if (mode === 'cheque') {
+      for (const holder of await usersWhoCan(conn, 'cheques.deposit')) recipients.add(holder);
+    }
+    for (const recipient of recipients) {
+      await notify(conn, {
+        userId: recipient,
+        tone: 'info',
+        title: `Collected at delivery — ${stop.so_number}`,
+        body: `${req.user.name} collected ₹${value.toFixed(2)} (${mode}).`,
+        actor: req.user.id,
+        refType: 'order',
+        refId: orderId,
+      });
+    }
+
+    await conn.commit();
+    res.status(201).json({ message: 'Collection recorded', order_id: orderId, ...result });
+  } catch (err) {
+    await conn.rollback();
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   } finally {
     conn.release();

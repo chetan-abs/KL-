@@ -42,6 +42,10 @@ export default function InvoiceScreen({ role, orderId, party, onBack, onInvoiced
 }), [COLORS]);
   const { data, loading, error, reload } = useApi(() => Orders.get(orderId), [orderId]);
   const [rates, setRates] = React.useState({});
+  // Billing, September 2026 — "round-off, capped at ₹10 per invoice." The
+  // server clamps it regardless; the cap is repeated here only so Gaurav
+  // sees the limit before he tries to exceed it.
+  const [roundOff, setRoundOff] = React.useState('0');
 
   const order = data?.order;
   const lines = order?.items || [];
@@ -63,13 +67,18 @@ export default function InvoiceScreen({ role, orderId, party, onBack, onInvoiced
   const gstTotal = rows.reduce((sum, r) => sum + r.gst, 0);
 
   const raise = useAction(
-    () => Billing.raise(orderId, rows.map((r) => ({ order_item_id: r.id, rate: r.rate }))),
+    () => Billing.raise(orderId, rows.map((r) => ({ order_item_id: r.id, rate: r.rate })), Number(roundOff) || 0),
     {
       onDone: (result) => {
         showAlert(
           'Invoice created',
           `${result.invoice_no} — ${rupees(result.grand_total, { decimals: true })}.${
             result.below_cost_lines ? ' Below-cost lines were recorded against your name.' : ''
+          }${
+            // Billing, September 2026 — "reviewed daily", not a block: the
+            // invoice above is already issued, this is only Gaurav being
+            // told Sibu will be looking at it.
+            result.flagged_reason ? `\n\nFlagged for Sibu's review: ${result.flagged_reason}` : ''
           }`
         );
         onInvoiced?.();
@@ -81,7 +90,7 @@ export default function InvoiceScreen({ role, orderId, party, onBack, onInvoiced
   function confirmRaise() {
     confirmAction(
       'Create this invoice?',
-      `${order.customer_name} — ${rupees(subTotal + gstTotal, { decimals: true })}. The party's balance moves by this amount.`,
+      `${order.customer_name} — ${rupees(subTotal + gstTotal + (Number(roundOff) || 0), { decimals: true })}. The party's balance moves by this amount.`,
       raise.run
     );
   }
@@ -157,12 +166,24 @@ export default function InvoiceScreen({ role, orderId, party, onBack, onInvoiced
               ))}
             </Card>
 
+            <Card>
+              <Field
+                label="Round-off (± ₹10 max)"
+                value={roundOff}
+                onChangeText={(v) => setRoundOff(v.replace(/[^0-9.-]/g, ''))}
+                keyboardType="numbers-and-punctuation"
+              />
+            </Card>
+
             <Card flush>
               <DetailRow label="Sub Total" value={rupees(subTotal, { decimals: true })} />
               <DetailRow label="GST" value={rupees(gstTotal, { decimals: true })} tone="muted" />
+              {Number(roundOff) ? (
+                <DetailRow label="Round-off" value={rupees(Number(roundOff), { decimals: true })} tone="muted" />
+              ) : null}
               <DetailRow
                 label="Grand Total"
-                value={rupees(subTotal + gstTotal, { decimals: true })}
+                value={rupees(subTotal + gstTotal + (Number(roundOff) || 0), { decimals: true })}
                 tone="brand"
                 last
               />

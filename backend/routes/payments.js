@@ -93,121 +93,118 @@ router.get('/outstanding', requirePermission('payments.view'), async (req, res, 
 });
 
 // POST /api/payments
+/**
+ * Records one receipt against a party's account — the FIFO allocation, the
+ * dealer cash discount if one was earned, the Tally push and the balance
+ * recompute. Extracted so a second caller can raise a receipt exactly the
+ * same way instead of a parallel implementation: `routes/dispatch.js` uses
+ * this for "collection at delivery" (4.4, September 2026) — a driver
+ * collecting cash or a cheque against the invoice they are handing over is
+ * the same fact as a receipt recorded at the desk, just recorded by whoever
+ * was standing in front of the party at the time.
+ *
+ * Runs inside the caller's transaction and does not commit. Throws on a
+ * missing customer or a bad amount/mode rather than returning an error
+ * shape — both callers already have their own request validation before
+ * this is reached, so those are truly exceptional here.
+ */
+async function recordPayment(conn, {
+  customerId, invoiceId = null, chequeId = null, amount, mode = 'cash',
+  paymentDate = null, note = null, userId,
+}) {
+  const value = money(Number(amount));
+  if (!Number.isFinite(value) || value <= 0) {
+    throw Object.assign(new Error('A receipt needs an amount greater than zero'), { status: 400 });
+  }
+  if (mode && !MODES.includes(mode)) {
+    throw Object.assign(new Error(`mode must be one of ${MODES.join(', ')}`), { status: 400 });
+  }
+
+  // Locked because the balance is about to be recomputed from it.
+  const [[party]] = await conn.query(
+    'SELECT masterid, name FROM customers WHERE masterid = ? FOR UPDATE',
+    [Number(customerId)]
+  );
+  if (!party) throw Object.assign(new Error('No such customer'), { status: 404 });
+
+  const receiptNo = await nextDocNumber(conn, {
+    table: 'payments', column: 'receipt_no', prefix: 'RC-', width: 4,
+  });
+  const resolvedDate = requestedDay(paymentDate) || businessDay();
+
+  const [inserted] = await conn.query(
+    `INSERT INTO payments
+       (receipt_no, customer_id, invoice_id, cheque_id, amount, mode, payment_date, note, collected_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [receiptNo, Number(customerId), invoiceId ? Number(invoiceId) : null,
+      chequeId ? Number(chequeId) : null, value, MODES.includes(mode) ? mode : 'cash',
+      resolvedDate, note, userId],
+  );
+
+  // FIFO matching (3.3) — "the oldest unpaid invoice is settled first".
+  //
+  // An explicit invoice_id on the request does NOT bypass this. The rule is
+  // the business's, not the operator's, and letting a receipt be pointed at
+  // a chosen invoice is exactly how a party's oldest debt stays oldest while
+  // the cash discount is earned on a fresh one.
+  const { allocations, unallocated } = await allocateFifo(conn, {
+    paymentId: inserted.insertId, customerId: Number(customerId), amount: value, paymentDate: resolvedDate,
+  });
+
+  // The dealer cash discount, if this receipt earned one. Returns null for
+  // every other customer type and for a payment that cleared nothing inside
+  // a discount band.
+  const creditNote = await issueCashDiscount(conn, {
+    paymentId: inserted.insertId, customerId: Number(customerId), allocations, actorId: userId,
+  });
+
+  // Section 14: "Payment receipts" App -> Tally.
+  const [[receiptRow]] = await conn.query(
+    `SELECT p.*, c.name AS party_name FROM payments p
+       JOIN customers c ON c.masterid = p.customer_id WHERE p.id = ?`,
+    [inserted.insertId]
+  );
+  await tallyEnqueue(conn, {
+    kind: 'receipt', refType: 'payment', refId: inserted.insertId,
+    payload: receiptXml({ payment: receiptRow, company: tallyConfig().company }),
+    userId,
+  });
+
+  await recomputeBalance(conn, Number(customerId));
+  const [[updated]] = await conn.query(
+    'SELECT closing_balance FROM customers WHERE masterid = ?', [Number(customerId)]);
+
+  return {
+    payment_id: inserted.insertId,
+    receipt_no: receiptNo,
+    closing_balance: updated.closing_balance,
+    allocations,
+    unallocated,
+    cash_discount: creditNote,
+  };
+}
+
 router.post('/', requirePermission('payments.create'), async (req, res, next) => {
   const { customer_id, invoice_id, cheque_id, amount, mode, payment_date, note } = req.body || {};
 
   if (!Number.isInteger(Number(customer_id))) {
     return res.status(400).json({ error: 'customer_id is required' });
   }
-  const value = money(Number(amount));
-  if (!Number.isFinite(value) || value <= 0) {
-    return res.status(400).json({ error: 'A receipt needs an amount greater than zero' });
-  }
-  if (mode && !MODES.includes(mode)) {
-    return res.status(400).json({ error: `mode must be one of ${MODES.join(', ')}` });
-  }
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
-    // Locked because the balance is about to be recomputed from it.
-    const [[party]] = await conn.query(
-      'SELECT masterid, name FROM customers WHERE masterid = ? FOR UPDATE',
-      [Number(customer_id)]
-    );
-    if (!party) {
-      await conn.rollback();
-      return res.status(404).json({ error: 'No such customer' });
-    }
-
-    const receiptNo = await nextDocNumber(conn, {
-      table: 'payments',
-      column: 'receipt_no',
-      prefix: 'RC-',
-      width: 4,
+    const result = await recordPayment(conn, {
+      customerId: customer_id, invoiceId: invoice_id, chequeId: cheque_id,
+      amount, mode, paymentDate: payment_date, note, userId: req.user.id,
     });
-
-    const [inserted] = await conn.query(
-      `INSERT INTO payments
-         (receipt_no, customer_id, invoice_id, cheque_id, amount, mode, payment_date, note, collected_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        receiptNo,
-        Number(customer_id),
-        invoice_id ? Number(invoice_id) : null,
-        cheque_id ? Number(cheque_id) : null,
-        value,
-        MODES.includes(mode) ? mode : 'cash',
-        requestedDay(payment_date) || businessDay(),
-        note || null,
-        req.user.id,
-      ]
-    );
-
-    const paymentDate = requestedDay(payment_date) || businessDay();
-
-    // FIFO matching (3.3) — "the oldest unpaid invoice is settled first".
-    //
-    // An explicit invoice_id on the request does NOT bypass this. The rule is
-    // the business's, not the operator's, and letting a receipt be pointed at
-    // a chosen invoice is exactly how a party's oldest debt stays oldest while
-    // the cash discount is earned on a fresh one.
-    const { allocations, unallocated } = await allocateFifo(conn, {
-      paymentId: inserted.insertId,
-      customerId: Number(customer_id),
-      amount: value,
-      paymentDate,
-    });
-
-    // The dealer cash discount, if this receipt earned one. Returns null for
-    // every other customer type and for a payment that cleared nothing inside
-    // a discount band.
-    const creditNote = await issueCashDiscount(conn, {
-      paymentId: inserted.insertId,
-      customerId: Number(customer_id),
-      allocations,
-      actorId: req.user.id,
-    });
-
-    // Section 14: "Payment receipts" App -> Tally.
-    const [[receiptRow]] = await conn.query(
-      `SELECT p.*, c.name AS party_name FROM payments p
-         JOIN customers c ON c.masterid = p.customer_id WHERE p.id = ?`,
-      [inserted.insertId]
-    );
-    await tallyEnqueue(conn, {
-      kind: 'receipt',
-      refType: 'payment',
-      refId: inserted.insertId,
-      payload: receiptXml({ payment: receiptRow, company: tallyConfig().company }),
-      userId: req.user.id,
-    });
-
-    // Section 14: "Cash Discount Credit Notes (auto, FIFO calculation)". Raised
-    // as pending, so it is queued when an owner issues it, not now — a pending
-    // note is not yet money the party may set against their account.
-    await recomputeBalance(conn, Number(customer_id));
-
-    const [[updated]] = await conn.query(
-      'SELECT closing_balance FROM customers WHERE masterid = ?',
-      [Number(customer_id)]
-    );
 
     await conn.commit();
-    res.status(201).json({
-      message: 'Receipt recorded',
-      payment_id: inserted.insertId,
-      receipt_no: receiptNo,
-      closing_balance: updated.closing_balance,
-      allocations,
-      // Money received that settled nothing: it stays on account rather than
-      // being pushed onto an invoice that has not been raised yet.
-      unallocated,
-      cash_discount: creditNote,
-    });
+    res.status(201).json({ message: 'Receipt recorded', ...result });
   } catch (err) {
     await conn.rollback();
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   } finally {
     conn.release();
@@ -285,3 +282,4 @@ router.post('/:id/reverse', requirePermission('payments.create'), async (req, re
 });
 
 module.exports = router;
+module.exports.recordPayment = recordPayment;

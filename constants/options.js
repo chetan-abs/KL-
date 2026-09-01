@@ -59,6 +59,26 @@ export const PROFESSIONS = [
  * from this list is the person who was there, and "Shop band thi" is what they
  * would have written.
  */
+/**
+ * 4.3, September 2026 — "Reason mandatory. From a fixed, admin-editable
+ * list — no free text." Kept here the same way every other fixed list in
+ * this file is (see the file comment) rather than as a DB table: nothing
+ * else in the app makes a vocabulary list database-driven, and the value is
+ * validated server-side the same way — `URGENT_REASONS` in
+ * backend/routes/orders.js is the list that actually matters; this is its
+ * client copy. Only marking an order urgent counts against the daily
+ * quota, so the list is deliberately short — a reason that does not fit
+ * one of these is not the kind of urgent the quota exists to ration.
+ */
+export const URGENT_REASONS = [
+  { value: 'retail_customer', label: 'Retail customer' },
+  { value: 'customer_in_shop', label: 'Customer in shop' },
+  { value: 'customer_on_the_way', label: 'Customer on the way' },
+  { value: 'urgent_site_delivery', label: 'Urgent site delivery' },
+  { value: 'promised_earlier', label: 'Party was promised earlier' },
+  { value: 'work_stopped', label: 'Work stopped at site' },
+];
+
 export const UNDELIVERED_REASONS = [
   { value: 'shop_closed', label: 'Shop band thi' },
   { value: 'party_absent', label: 'Party nahi mila' },

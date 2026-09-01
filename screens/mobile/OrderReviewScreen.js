@@ -189,6 +189,16 @@ export default function OrderReviewScreen({ role, order: seed, onBack, onSettled
             <Card flush>
               <DetailRow label="Order value" value={rupees(order.total_amount)} tone="brand" />
               <DetailRow label="Placed" value={order.order_date} />
+              {/* 4.3 — "shown on the order, printed on the picking slip, and
+                  sent to the party. If a slot is going to slip, the order's
+                  owner is prompted to call the party before the party calls." */}
+              {order.delivery_slot_label ? (
+                <DetailRow
+                  label="Delivery slot"
+                  value={`${order.delivery_slot_label}${order.is_urgent ? ' · Urgent' : ''}`}
+                  tone={order.is_urgent ? 'warning' : 'muted'}
+                />
+              ) : null}
               {order.notes ? (
                 <DetailRow label="Instructions" value={order.notes} tone="warning" last />
               ) : null}

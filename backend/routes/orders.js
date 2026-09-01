@@ -3,7 +3,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { userCan } = require('../utils/permissions');
-const { businessDay } = require('../utils/businessDay');
+const { businessDay, businessTime, deriveDeliverySlot } = require('../utils/businessDay');
 const { placeFor } = require('../utils/geocode');
 const { moveStock, notify, usersWithGrant, usersWhoCan, nextDocNumber } = require('../utils/workflow');
 const { approveOrder } = require('./workflow');
@@ -23,6 +23,18 @@ const APPROVAL_VALUE_THRESHOLD = Number(process.env.ORDER_APPROVAL_VALUE_THRESHO
 // "quantity > 3x this party's normal for that SKU" — the multiplier itself
 // is the one number the sheet actually states.
 const APPROVAL_QTY_MULTIPLE = 3;
+
+// 4.3 — "reason mandatory, from a fixed, admin-editable list — no free
+// text." constants/options.js carries the client's copy (URGENT_REASONS);
+// this is the one that is actually enforced.
+const URGENT_REASONS = [
+  'retail_customer', 'customer_in_shop', 'customer_on_the_way',
+  'urgent_site_delivery', 'promised_earlier', 'work_stopped',
+];
+// "2 urgent orders per user per day. Beyond that, flag is blocked and
+// needs Yash's approval, logged." "Without a cap, within two months half
+// of all orders are urgent and the urgent picking lane becomes useless."
+const URGENT_DAILY_QUOTA = 2;
 
 router.use(authenticate);
 
@@ -190,6 +202,10 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       delivered_to = null,
       delivery_mode = null,
       urgency = null,
+      // 4.3 — is_urgent is the new binary flag with its own reason and quota;
+      // `urgency` above is the older, unrelated 'hours'/'days' timeframe field.
+      is_urgent = false,
+      urgency_reason = null,
       special_instructions = null,
       payment_mode = null,
       payment_splits = [],
@@ -275,6 +291,40 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       if (!isCustomerType(customerType)) {
         await conn.rollback();
         return res.status(400).json({ error: `"${customerType}" is not a customer type.`, code: 'BAD_CUSTOMER_TYPE' });
+      }
+
+      // "Override by Yash or Papa only" — read once, reused by both the
+      // urgent-quota check here and the credit/overdue block further down.
+      const overrideRequested = req.body?.override === true || req.body?.override === 'true';
+      const canOverride = userCan(req.user, 'all');
+
+      // ---- 4.3 urgency: fixed reason, daily quota --------------------------
+      let urgentQuotaOverridden = false;
+      if (is_urgent) {
+        if (!URGENT_REASONS.includes(urgency_reason)) {
+          await conn.rollback();
+          return res.status(400).json({
+            error: 'An urgent order needs a reason from the fixed list.',
+            code: 'URGENCY_REASON_REQUIRED',
+          });
+        }
+        const [[todayUrgent]] = await conn.query(
+          `SELECT COUNT(*) AS n FROM orders
+            WHERE created_by = ? AND order_date = ? AND is_urgent = TRUE
+              AND status NOT IN ('rejected', 'cancelled')`,
+          [req.user.id, order_date],
+        );
+        if (Number(todayUrgent.n) >= URGENT_DAILY_QUOTA) {
+          if (!(overrideRequested && canOverride)) {
+            await conn.rollback();
+            return res.status(409).json({
+              error: `You have already raised ${todayUrgent.n} urgent order(s) today — the daily limit is `
+                + `${URGENT_DAILY_QUOTA}. Only Yash or Manoj can override this.`,
+              code: 'URGENT_QUOTA_EXCEEDED',
+            });
+          }
+          urgentQuotaOverridden = true;
+        }
       }
 
       // ---- the window the type demands ------------------------------------
@@ -504,12 +554,8 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       if (overLimit) tripped.push('credit_limit');
       if (overdue60) tripped.push('overdue_60');
 
-      // "Override by Yash or Papa only" — the same wildcard-only bar R-11
-      // and R-16 already use for an owner decision. Read once here so the
-      // write section below can log it without re-deriving the same check.
-      const overrideRequested = req.body?.override === true || req.body?.override === 'true';
-      const canOverride = userCan(req.user, 'all');
-
+      // overrideRequested/canOverride were already read above, for the
+      // urgent-quota check — same "Yash or Papa only" bar, reused here.
       if (tripped.length) {
         if (!(overrideRequested && canOverride)) {
           await conn.rollback();
@@ -602,19 +648,29 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         table: 'orders', column: 'so_number', prefix: 'SO-', width: 5,
       });
 
+      // 4.3 — "dispatch times are fixed and the slot is derived, not typed."
+      // Computed from the punch instant, not the order_date the request may
+      // have named, because the slot is about when THIS punch happened.
+      const slot = deriveDeliverySlot(businessTime(), Boolean(is_urgent), businessDay());
+
       const [orderResult] = await conn.query(
         `INSERT INTO orders (so_number, customer_id, customer_type, order_date, total_amount,
                              created_by, salesman_id, agent_id, agent_commission,
                              scheme_member_id, scheme_qualifying, status, approval_reason, notes,
-                             delivered_to, delivery_mode, urgency, special_instructions,
+                             delivered_to, delivery_mode, urgency, is_urgent, urgency_reason,
+                             delivery_slot_label, delivery_slot_date, delivery_slot_time,
+                             special_instructions,
                              payment_mode, gps_lat, gps_lng, gps_place, gps_place_source,
                              duplicate_ack, order_photo_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [soNumber, customer_id, customerType, order_date, grandTotal,
           req.user.id, salesmanId, agent_id, commissionTotal,
           scheme_member_id, qualifyingTotal, orderStatus,
           routingReasons.length ? routingReasons.join('; ') : null, notes,
-          String(delivered_to).trim(), delivery_mode, urgency, special_instructions,
+          String(delivered_to).trim(), delivery_mode, urgency,
+          Boolean(is_urgent), is_urgent ? urgency_reason : null,
+          slot.label, slot.date, slot.time,
+          special_instructions,
           payment_mode, gps?.lat ?? null, gps?.lng ?? null,
           located.place, located.source,
           Boolean(duplicate_ack), order_photo_id ? Number(order_photo_id) : null],
@@ -728,10 +784,11 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         }
       }
 
-      // 3.3 — every override actually used is logged, one row per kind
-      // tripped, so "who let this through and why" is answerable later.
-      if (tripped.length && overrideRequested && canOverride) {
-        for (const kind of tripped) {
+      // 3.3 / 4.3 — every override actually used is logged, one row per
+      // kind tripped, so "who let this through and why" is answerable later.
+      const overriddenKinds = [...tripped, ...(urgentQuotaOverridden ? ['urgent_quota'] : [])];
+      if (overriddenKinds.length && overrideRequested && canOverride) {
+        for (const kind of overriddenKinds) {
           await conn.query(
             `INSERT INTO order_overrides (order_id, kind, overridden_by, note)
              VALUES (?, ?, ?, ?)`,
@@ -741,8 +798,8 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
           await notify(conn, {
             userId: approver,
             tone: 'warning',
-            title: `Credit override on ${soNumber}`,
-            body: `${req.user.name} overrode ${tripped.join(' and ')} for ${customer.name}.`,
+            title: `Override on ${soNumber}`,
+            body: `${req.user.name} overrode ${overriddenKinds.join(', ')} for ${customer.name}.`,
             actor: req.user.id,
             refType: 'order',
             refId: orderId,
