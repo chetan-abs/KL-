@@ -2128,6 +2128,7 @@ CREATE TABLE IF NOT EXISTS purchase_items (
   rate decimal(15,2) NOT NULL,
   last_rate decimal(15,2) DEFAULT NULL,
   rate_changed tinyint(1) NOT NULL DEFAULT '0',
+  rate_change_reason varchar(40) DEFAULT NULL,
   gst_percent decimal(5,2) DEFAULT '0.00',
   total decimal(15,2) NOT NULL,
   PRIMARY KEY (id),
@@ -2175,6 +2176,39 @@ CREATE TABLE IF NOT EXISTS git_entries (
   CONSTRAINT git_entries_ibfk_3 FOREIGN KEY (purchase_id) REFERENCES purchases (id) ON DELETE SET NULL,
   CONSTRAINT git_entries_ibfk_4 FOREIGN KEY (bilty_photo_id) REFERENCES attachments (id) ON DELETE SET NULL,
   CONSTRAINT git_entries_ibfk_5 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- purchase_claims
+-- Added by migration. See migrations/ for the reasoning behind this table.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS purchase_claims (
+  id int NOT NULL AUTO_INCREMENT,
+  purchase_id int NOT NULL,
+  purchase_item_id int NOT NULL,
+  item_id int NOT NULL,
+  item_name varchar(100) NOT NULL,
+  supplier_name varchar(120) NOT NULL,
+  bill_qty decimal(15,4) NOT NULL,
+  actual_qty decimal(15,4) NOT NULL,
+  short_qty decimal(15,4) NOT NULL,
+  rate decimal(15,2) NOT NULL,
+  value decimal(15,2) NOT NULL,
+  status enum('raised','accepted','credited','rejected') NOT NULL DEFAULT 'raised',
+  note varchar(255) DEFAULT NULL,
+  decided_by varchar(20) DEFAULT NULL,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  decided_at datetime DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_status (status,created_at),
+  KEY idx_purchase (purchase_id),
+  KEY purchase_item_id (purchase_item_id),
+  KEY item_id (item_id),
+  KEY decided_by (decided_by),
+  CONSTRAINT purchase_claims_ibfk_1 FOREIGN KEY (purchase_id) REFERENCES purchases (id) ON DELETE CASCADE,
+  CONSTRAINT purchase_claims_ibfk_2 FOREIGN KEY (purchase_item_id) REFERENCES purchase_items (id) ON DELETE CASCADE,
+  CONSTRAINT purchase_claims_ibfk_3 FOREIGN KEY (item_id) REFERENCES items (masterid) ON DELETE CASCADE,
+  CONSTRAINT purchase_claims_ibfk_4 FOREIGN KEY (decided_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------------------

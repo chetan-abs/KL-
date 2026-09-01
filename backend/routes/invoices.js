@@ -329,26 +329,29 @@ router.post('/', requirePermission('billing.create'), async (req, res, next) => 
     // distress sale and a correction against a credit note are both legitimate,
     // and Gaurav is the person trusted with the call. It simply cannot happen
     // quietly.
-    const [costs] = await conn.query(
-      `SELECT pi.item_id, MAX(pi.rate) AS cost
-         FROM purchase_items pi
-         JOIN purchases p ON p.id = pi.purchase_id AND p.status = 'posted'
-        WHERE pi.item_id IN (?)
-        GROUP BY pi.item_id`,
-      [lines.map((l) => l.item_id)]
-    );
-    const costById = new Map(costs.map((row) => [row.item_id, Number(row.cost)]));
-
+    //
+    // 5.3 — read from items.cost_price, the same column
+    // utils/pricing.js's isBelowCost() uses for the order-punch alert.
+    // This used to be its own MAX(purchase_items.rate) query, which is
+    // wrong twice over against the sheet's own "non-negotiable" cost
+    // basis: MAX is not the LATEST rate (routes/purchases.js's postStock()
+    // now keeps cost_price at the latest posted rate automatically), and a
+    // second cost basis disagreeing with the order-time one meant the same
+    // sale could be "below cost" at punch and not at billing, or the
+    // reverse.
     // Billing, September 2026 — "GST or HSN mismatch" is against the item
     // MASTER as it stands today, not the snapshot on the order line: the
     // snapshot is frozen at order time on purpose (so a later master edit
     // never rewrites history), which is exactly why it can drift from a
-    // master corrected since.
+    // master corrected since. cost_price rides along in the same query —
+    // it is the same row, and it is what decides the below-cost flag below.
     const [masters] = await conn.query(
-      'SELECT masterid, hsn, gst_percent FROM items WHERE masterid IN (?)',
+      'SELECT masterid, hsn, gst_percent, cost_price FROM items WHERE masterid IN (?)',
       [lines.map((l) => l.item_id)]
     );
     const masterById = new Map(masters.map((row) => [row.masterid, row]));
+    const costById = new Map(
+      masters.filter((r) => r.cost_price !== null).map((row) => [row.masterid, Number(row.cost_price)]));
 
     let subTotal = 0;
     let gstTotal = 0;

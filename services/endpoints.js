@@ -144,6 +144,19 @@ export const Purchases = {
   verify: (id, lines) => body(api.post(`/purchases/${id}/verify`, { lines })),
   /** 5.4 — hold the entry for the owner's review. */
   hold: (id, note) => body(api.post(`/purchases/${id}/hold`, { note })),
+
+  /**
+   * 5.1 — "beside the line, at entry": last purchase rate/date/supplier plus
+   * today's selling rates, so a broken margin is visible before saving.
+   */
+  itemContext: (itemId) => body(api.get(`/purchases/item-context/${itemId}`)),
+
+  /** 5, "short-supply claims" — auto-raised on entry when bill/actual differ. */
+  claims: (status) => body(api.get('/purchases/claims', { params: { status } })),
+  decideClaim: (id, status, note) => body(api.post(`/purchases/claims/${id}/decide`, { status, note })),
+
+  /** 5.2 — the weekly price-change report, sorted by rupee impact. */
+  priceReport: (from, to) => body(api.get('/purchases/price-report', { params: { from, to } })),
 };
 
 // ---------------------------------------------------------------------------

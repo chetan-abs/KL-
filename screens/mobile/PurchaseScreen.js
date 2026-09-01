@@ -19,6 +19,15 @@ import ActionButton from '../../components/mobile/ActionButton';
 import NoticeBar from '../../components/mobile/NoticeBar';
 import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 
+/** 5.1 — the fixed list a rate move beyond the set % must be justified from. */
+const RATE_CHANGE_REASONS = [
+  { value: 'company_price_revision', label: 'Company price revision' },
+  { value: 'different_pack_size', label: 'Different pack size' },
+  { value: 'different_supplier', label: 'Different supplier' },
+  { value: 'freight_treated_differently', label: 'Freight treated differently' },
+  { value: 'entry_correction', label: 'Entry correction' },
+];
+
 /**
  * 13 — Sonu enters a purchase. Receiving stock is the only thing that adds to
  * the ledger without an order behind it.
@@ -60,36 +69,68 @@ export default function PurchaseScreen({ role, nav, onNewItem, onOpenGit, onOpen
     label: `${i.name} · ${rupees(i.rate)}`,
   }));
 
-  function addLine(itemId) {
+  // 5.1 — "beside the line, at entry": last purchase rate/date/supplier and
+  // today's selling rates, fetched once per item so margin can be computed
+  // locally as the rate is typed, with no round trip per keystroke.
+  async function addLine(itemId) {
     const master = (items.data?.items || []).find((i) => i.masterid === itemId);
     if (!master) return;
+    setPicking(null);
     setLines((prev) => [
       ...prev,
-      { item_id: master.masterid, name: master.name, qty: '', rate: '' },
+      { item_id: master.masterid, name: master.name, bill_qty: '', actual_qty: '', rate: '', reason: null, context: null },
     ]);
-    setPicking(null);
+    try {
+      const context = await Purchases.itemContext(itemId);
+      setLines((prev) => prev.map((l) => (
+        l.item_id === itemId && l.context === null ? { ...l, context } : l
+      )));
+    } catch {
+      // The context is a courtesy display — a failed lookup should not stop
+      // the docket from being entered.
+    }
   }
 
   const setLine = (index, patch) =>
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)));
 
-  const subTotal = lines.reduce(
-    (sum, l) => sum + (Number(l.qty) || 0) * (Number(l.rate) || 0),
+  const money2 = (n) => Math.round(n * 100) / 100;
+
+  const rows = lines.map((line) => {
+    const rate = Number(line.rate) || 0;
+    const lastRate = line.context?.last_purchase?.rate ?? null;
+    const changePct = lastRate ? Math.abs(((rate - lastRate) / lastRate) * 100) : 0;
+    const threshold = line.context?.rate_change_reason_threshold || 0;
+    const needsReason = rate > 0 && lastRate && threshold > 0 && changePct > threshold;
+    const dealerRate = line.context?.selling_rates?.dealer;
+    const margin = rate > 0 && dealerRate ? money2(dealerRate - rate) : null;
+    return { ...line, needsReason, margin, lastRate };
+  });
+
+  const subTotal = rows.reduce(
+    (sum, l) => sum + (Number(l.actual_qty) || 0) * (Number(l.rate) || 0),
     0
   );
 
   const ready =
     supplier.trim() &&
     invoiceNo.trim() &&
-    lines.length > 0 &&
-    lines.every((l) => Number(l.qty) > 0 && Number(l.rate) >= 0);
+    rows.length > 0 &&
+    rows.every((l) => Number(l.bill_qty) > 0 && Number(l.actual_qty) >= 0 && Number(l.rate) >= 0
+      && (!l.needsReason || l.reason));
 
   const post = useAction(
     () =>
       Purchases.post({
         supplier_name: supplier.trim(),
         invoice_no: invoiceNo.trim(),
-        lines: lines.map((l) => ({ item_id: l.item_id, qty: Number(l.qty), rate: Number(l.rate) })),
+        lines: rows.map((l) => ({
+          item_id: l.item_id,
+          bill_qty: Number(l.bill_qty),
+          actual_qty: Number(l.actual_qty),
+          rate: Number(l.rate),
+          rate_change_reason: l.reason || undefined,
+        })),
       }),
     {
       onDone: (result) => {
@@ -154,21 +195,42 @@ export default function PurchaseScreen({ role, nav, onNewItem, onOpenGit, onOpen
         />
       </Card>
 
-      <Card title={`Items received (${lines.length})`} flush>
-        {lines.map((line, index) => (
+      <Card title={`Items received (${rows.length})`} flush>
+        {rows.map((line, index) => (
           <View key={`${line.item_id}-${index}`} style={[styles.line, index ? styles.ruled : null]}>
             <View style={styles.lineHead}>
               <AppText weight="bold" size="sm" style={styles.flex}>{line.name}</AppText>
               <AppText weight="bold" size="sm" color={COLORS.brand}>
-                {rupees((Number(line.qty) || 0) * (Number(line.rate) || 0))}
+                {rupees((Number(line.actual_qty) || 0) * (Number(line.rate) || 0))}
               </AppText>
             </View>
+
+            {/* 5.1 — "beside the line, at entry": last rate/date/supplier and
+                today's margin, so a broken margin is visible before saving. */}
+            {line.lastRate ? (
+              <AppText size="xs" color={COLORS.textMuted} style={styles.meta}>
+                {`Last bought at ${rupees(line.lastRate)} from ${line.context.last_purchase.supplier} (${formatDate(line.context.last_purchase.date)})`}
+              </AppText>
+            ) : null}
+            {line.margin !== null ? (
+              <AppText size="xs" color={line.margin < 0 ? COLORS.error : COLORS.textMuted} style={styles.meta}>
+                {`Dealer sells at ${rupees(line.context.selling_rates.dealer)} — margin ${rupees(line.margin)}${line.margin < 0 ? ' ⚠ BROKEN' : ''}`}
+              </AppText>
+            ) : null}
+
             <View style={styles.inputs}>
               <Field
-                label="Qty"
+                label="Bill Qty"
                 style={styles.flex}
-                value={line.qty}
-                onChangeText={(v) => setLine(index, { qty: v.replace(/[^0-9.]/g, '') })}
+                value={line.bill_qty}
+                onChangeText={(v) => setLine(index, { bill_qty: v.replace(/[^0-9.]/g, '') })}
+                keyboardType="decimal-pad"
+              />
+              <Field
+                label="Actual Qty"
+                style={styles.flex}
+                value={line.actual_qty}
+                onChangeText={(v) => setLine(index, { actual_qty: v.replace(/[^0-9.]/g, '') })}
                 keyboardType="decimal-pad"
               />
               <Field
@@ -187,6 +249,16 @@ export default function PurchaseScreen({ role, nav, onNewItem, onOpenGit, onOpen
                 <AppText weight="bold" size="sm" color={COLORS.error}>✕</AppText>
               </TouchableOpacity>
             </View>
+
+            {line.needsReason ? (
+              <Select
+                style={styles.spaced}
+                value={line.reason}
+                options={RATE_CHANGE_REASONS}
+                onChange={(value) => setLine(index, { reason: value })}
+                placeholder="Why did the rate move this much?"
+              />
+            ) : null}
           </View>
         ))}
 

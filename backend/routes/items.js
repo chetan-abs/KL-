@@ -29,7 +29,10 @@ const WRITABLE = [
  * Split from WRITABLE rather than guarded inside the handler so that adding a
  * pricing column to one list cannot accidentally make it editable from the
  * other. cost_price is here because it is what R-16's below-cost alert fires
- * against — whoever can set the cost decides when the alarm sounds.
+ * against. 5.3 (September 2026) made the default source of truth
+ * routes/purchases.js's postStock() — every posted purchase keeps it at the
+ * latest rate automatically — and left this as Gaurav's manual override for
+ * a genuine exception, rather than the only way it was ever set.
  */
 const RATE_WRITABLE = [
   'pricing_type', 'base_price', 'cost_price',

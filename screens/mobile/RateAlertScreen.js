@@ -3,14 +3,16 @@ import { View, RefreshControl, StyleSheet } from 'react-native';
 
 import { useThemeColors } from '../../context/ThemeContext';
 import { Purchases } from '../../services/endpoints';
-import { useApi } from '../../hooks/useApi';
+import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
 import { formatDate } from '../../utils/datetime';
+import { confirmAction, showAlert } from '../../services/confirm';
 import AppText from '../../components/AppText';
 import Screen from '../../components/mobile/Screen';
 import ScreenHeader from '../../components/mobile/ScreenHeader';
 import Card from '../../components/mobile/Card';
 import Badge from '../../components/mobile/Badge';
+import ActionButton from '../../components/mobile/ActionButton';
 import NoticeBar from '../../components/mobile/NoticeBar';
 import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 
@@ -39,10 +41,21 @@ export default function RateAlertScreen({ role, nav }) {
     () => Purchases.rateAlerts(),
     []
   );
+  // 5, "short-supply claims" — raised automatically when bill and actual
+  // quantity differ; tracked here alongside the rate movements they often
+  // ride in with.
+  const claims = useApi(() => Purchases.claims('raised'), []);
+
+  const decide = useAction(
+    ({ id, status }) => Purchases.decideClaim(id, status),
+    { onDone: () => claims.reload(), onFail: (message) => showAlert('Could not update', message) }
+  );
 
   const alerts = data?.alerts || [];
   const rises = alerts.filter((a) => a.direction === 'up');
   const worst = rises.slice().sort((a, b) => Math.abs(b.change_percent) - Math.abs(a.change_percent))[0];
+  const openClaims = claims.data?.claims || [];
+  const claimsValue = openClaims.reduce((sum, c) => sum + Number(c.value), 0);
 
   return (
     <Screen
@@ -73,6 +86,45 @@ export default function RateAlertScreen({ role, nav }) {
           <NoticeBar tone="warning">
             {`${worst.item_name} up ${Math.abs(worst.change_percent)}% to ${rupees(worst.new_rate)}. Review the selling rate before the next sale.`}
           </NoticeBar>
+        ) : null}
+
+        {openClaims.length ? (
+          <Card title={`Short-supply claims (${rupees(claimsValue)})`} flush>
+            {openClaims.map((claim, index) => (
+              <View key={claim.id} style={[styles.row, index ? styles.ruled : null]}>
+                <View style={styles.body}>
+                  <AppText weight="bold" size="sm">{claim.item_name}</AppText>
+                  <AppText size="xs" color={COLORS.textMuted} style={styles.meta}>
+                    {`${claim.supplier_name} — billed ${Number(claim.bill_qty)}, got ${Number(claim.actual_qty)} · ${rupees(claim.value)} · ${claim.age_days}d`}
+                  </AppText>
+                  <View style={styles.rates}>
+                    <ActionButton
+                      size="sm"
+                      tone="approve"
+                      label="Accepted"
+                      disabled={decide.busy}
+                      onPress={() => confirmAction(
+                        'Mark this claim accepted?',
+                        `${claim.supplier_name} has agreed to ${rupees(claim.value)} for ${claim.item_name}.`,
+                        () => decide.run({ id: claim.id, status: 'accepted' })
+                      )}
+                    />
+                    <ActionButton
+                      size="sm"
+                      tone="reject"
+                      label="Reject"
+                      disabled={decide.busy}
+                      onPress={() => confirmAction(
+                        'Reject this claim?',
+                        'Removed from the open list without a resolution.',
+                        () => decide.run({ id: claim.id, status: 'rejected' })
+                      )}
+                    />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Card>
         ) : null}
 
         <Card title="Movements" flush>
