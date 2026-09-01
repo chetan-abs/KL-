@@ -18,6 +18,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const { numericId } = require('../middleware/params');
+const { userCan } = require('../utils/permissions');
 const { money, transition, notify, nextDocNumber, recomputeBalance, usersWhoCan } = require('../utils/workflow');
 const { businessDay } = require('../utils/businessDay');
 const { qualifyingValue } = require('../utils/pricing');
@@ -39,6 +40,16 @@ const BILL_REVIEW_DISCOUNT_THRESHOLD = Number(process.env.BILL_REVIEW_DISCOUNT_T
 const BILL_REVIEW_CREDIT_VALUE_THRESHOLD = Number(process.env.BILL_REVIEW_CREDIT_VALUE_THRESHOLD) || 0;
 // "Capped at ₹10 per invoice" — the one figure the sheet does state.
 const ROUND_OFF_CAP = 10;
+
+// 8, "Credit note limit" — CHANGED from BILL_REVIEW_CREDIT_VALUE_THRESHOLD
+// above, which only flags a note for Sibu's post-hoc review and never
+// blocks. This is stronger: "credit notes above a set value require Yash
+// or Manoj approval" — extends R-11's rate-adjustment approval to credit
+// notes, and a note above this figure cannot be ISSUED until an owner
+// approves it. Same unset-by-default treatment as every other business
+// figure this project leaves to Yash.
+const CREDIT_NOTE_APPROVAL_THRESHOLD = Number(process.env.CREDIT_NOTE_APPROVAL_THRESHOLD) || 0;
+const approvesCreditNote = (user) => userCan(user, 'all');
 
 // GET /api/invoices — what is waiting to be billed, and what already was
 router.get('/', requirePermission('billing.view'), async (req, res, next) => {
@@ -159,6 +170,22 @@ router.post('/credit-notes', requirePermission('billing.create'), async (req, re
       ]
     );
 
+    // 8 — a note above the threshold cannot be issued until an owner
+    // approves it (see /credit-notes/:id/issue), so they are told now.
+    if (CREDIT_NOTE_APPROVAL_THRESHOLD > 0 && value > CREDIT_NOTE_APPROVAL_THRESHOLD) {
+      for (const owner of await usersWhoCan(conn, 'all')) {
+        await notify(conn, {
+          userId: owner,
+          tone: 'warning',
+          title: `Credit note needs your approval — ${noteNo}`,
+          body: `₹${value.toFixed(2)}, above the ₹${CREDIT_NOTE_APPROVAL_THRESHOLD.toFixed(2)} limit. Raised by ${req.user.name}.`,
+          actor: req.user.id,
+          refType: 'credit_note',
+          refId: result.insertId,
+        });
+      }
+    }
+
     await conn.commit();
     res.status(201).json({ message: 'Credit note raised', id: result.insertId, note_no: noteNo });
   } catch (err) {
@@ -170,10 +197,53 @@ router.post('/credit-notes', requirePermission('billing.create'), async (req, re
 });
 
 // POST /api/invoices/credit-notes/:id/issue
+/**
+ * POST /api/invoices/credit-notes/:id/approve — 8, "credit note limit".
+ * Yash or Manoj only, same wildcard-only bar R-11 and R-16 already use.
+ * Approving does not issue the note — it only clears the bar issuing checks.
+ */
+router.post('/credit-notes/:id/approve', async (req, res, next) => {
+  if (!approvesCreditNote(req.user)) {
+    return res.status(403).json({
+      error: 'A credit note above the limit is approved by Yash or Manoj only.',
+      code: 'CREDIT_NOTE_APPROVAL_DENIED',
+    });
+  }
+  try {
+    const [result] = await pool.query(
+      `UPDATE credit_notes SET approved_by = ?, approved_at = NOW()
+        WHERE id = ? AND status = 'pending' AND approved_by IS NULL`,
+      [req.user.id, req.params.id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: 'No pending, unapproved note with that id.' });
+    }
+    res.json({ message: 'Credit note approved for issue.', id: Number(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/credit-notes/:id/issue', requirePermission('billing.create'), async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+
+    // 8, "credit note limit" — a note above the threshold needs an owner's
+    // approval BEFORE it can be issued. Checked ahead of the guarded UPDATE
+    // below, which still handles the two-clerks race the same way it always
+    // has for a note that clears this bar.
+    if (CREDIT_NOTE_APPROVAL_THRESHOLD > 0) {
+      const [[note]] = await conn.query(
+        'SELECT amount, approved_by FROM credit_notes WHERE id = ?', [Number(req.params.id)]);
+      if (note && Number(note.amount) > CREDIT_NOTE_APPROVAL_THRESHOLD && !note.approved_by) {
+        await conn.rollback();
+        return res.status(409).json({
+          error: `This note is above ₹${CREDIT_NOTE_APPROVAL_THRESHOLD.toFixed(2)} — Yash or Manoj must approve it first.`,
+          code: 'CREDIT_NOTE_APPROVAL_REQUIRED',
+        });
+      }
+    }
 
     // Guarded on the current status inside the UPDATE rather than read-then-write:
     // two clerks issuing the same note would otherwise both succeed and the

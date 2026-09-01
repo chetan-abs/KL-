@@ -54,7 +54,25 @@ export default function CreditNoteScreen({ role, nav, onNewReturn }) {
       showAlert('Credit note issued', 'The party’s balance has been reduced.');
       reload();
     },
-    onFail: (message) => showAlert('Could not issue', message),
+    onFail: (message, err) => {
+      if (err?.response?.data?.code === 'CREDIT_NOTE_APPROVAL_REQUIRED' && role.isOwner) {
+        showAlert('Needs your approval first', `${message} Tap Approve, then Issue.`);
+        return;
+      }
+      showAlert('Could not issue', message);
+    },
+  });
+
+  // 8, "credit note limit" — Yash/Manoj clearing a note above the threshold.
+  // Harmless to offer on any pending note: approving one that was never
+  // gated just records who signed off, and issuing still checks the server's
+  // own rule regardless of what this screen shows.
+  const approve = useAction((id) => Billing.approveCreditNote(id), {
+    onDone: () => {
+      showAlert('Approved', 'Now issue it to move the party\'s balance.');
+      reload();
+    },
+    onFail: (message) => showAlert('Could not approve', message),
   });
 
   return (
@@ -123,8 +141,27 @@ export default function CreditNoteScreen({ role, nav, onNewReturn }) {
 
                   <View style={styles.foot}>
                     <Badge tone={open ? 'pending' : 'success'}>
-                      {open ? 'Pending' : 'Issued'}
+                      {open ? (note.approved_by ? 'Approved' : 'Pending') : 'Issued'}
                     </Badge>
+                    {/* 8, "credit note limit" — offered to any owner on any
+                        pending note; approving one the server never gated
+                        just records who signed off. */}
+                    {open && role.isOwner && !note.approved_by ? (
+                      <TouchableOpacity
+                        disabled={approve.busy}
+                        onPress={() =>
+                          confirmAction(
+                            'Approve this credit note?',
+                            `${note.party} — ${rupees(note.amount)}.`,
+                            () => approve.run(note.id)
+                          )
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Approve ${note.note_no}`}
+                      >
+                        <AppText weight="bold" size="xs" color={COLORS.warningDark}>Approve →</AppText>
+                      </TouchableOpacity>
+                    ) : null}
                     {open ? (
                       <TouchableOpacity
                         disabled={issue.busy}

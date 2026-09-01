@@ -76,6 +76,12 @@ const RETURN_REASONS = [
 /** R-10 — Gaurav has two hours to issue the credit note. */
 const CREDIT_NOTE_SLA_HOURS = 2;
 
+// 8, "credit note limit" — same constant routes/invoices.js reads for its
+// own POST /credit-notes; kept as its own env read here rather than
+// imported, because these two files already share no runtime state and a
+// cross-import for one number would be a bigger change than the number.
+const CREDIT_NOTE_APPROVAL_THRESHOLD = Number(process.env.CREDIT_NOTE_APPROVAL_THRESHOLD) || 0;
+
 // POST /api/returns
 router.post('/', requirePermission('returns.create'), async (req, res, next) => {
   const { customer_id, invoice_id, lines, note, reason, photo_id } = req.body || {};
@@ -425,6 +431,26 @@ router.post('/:id/approve', requirePermission('verification'), async (req, res, 
         refType: 'sales_return',
         refId: returnId,
       });
+    }
+
+    // 8, "credit note limit" — the same gate routes/invoices.js's own
+    // POST /credit-notes applies. A return-sourced note above the threshold
+    // needs the same owner approval (POST /invoices/credit-notes/:id/approve)
+    // before it can be issued — the issue route itself is what actually
+    // blocks it; this is only the notification.
+    if (CREDIT_NOTE_APPROVAL_THRESHOLD > 0 && creditTotal > CREDIT_NOTE_APPROVAL_THRESHOLD) {
+      for (const owner of await usersWhoCan(conn, 'all')) {
+        await notify(conn, {
+          userId: owner,
+          tone: 'warning',
+          title: `Credit note needs your approval — ${noteNo}`,
+          body: `${party?.name || 'Party'} — ${rupeesLabel(creditTotal)}, above the `
+            + `${rupeesLabel(CREDIT_NOTE_APPROVAL_THRESHOLD)} limit.`,
+          actor: req.user.id,
+          refType: 'credit_note',
+          refId: note.insertId,
+        });
+      }
     }
 
     // "Differences flagged in the EOD report with both users named." Told

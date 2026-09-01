@@ -28,7 +28,7 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * but it must be acknowledged explicitly, and the amount is carried into the
  * confirmation so nobody closes a short drawer without reading the number.
  */
-export default function EodScreen({ role, nav, onOpenHandover }) {
+export default function EodScreen({ role, user, nav, onOpenHandover }) {
   const COLORS = useThemeColors();
   const styles = React.useMemo(() => StyleSheet.create({
   flex: { flex: 1 },
@@ -93,6 +93,17 @@ export default function EodScreen({ role, nav, onOpenHandover }) {
     }
   );
 
+  // 8, "daily cash count" — the second, different-user signature. Offered
+  // to anyone with the same eod.close grant, since the requirement is a
+  // second PERSON, not a second duty.
+  const confirm = useAction(() => Cash.confirmDay(closed?.id), {
+    onDone: () => {
+      showAlert('Confirmed', 'The count now carries two names.');
+      reload();
+    },
+    onFail: (message) => showAlert('Could not confirm', message),
+  });
+
   function confirmClose() {
     confirmAction(
       variance === 0 ? 'Close the day?' : 'Close with a variance?',
@@ -153,8 +164,33 @@ export default function EodScreen({ role, nav, onOpenHandover }) {
                 label="Variance"
                 value={rupees(closed.variance)}
                 tone={Number(closed.variance) === 0 ? 'success' : 'danger'}
-                last
+                last={Boolean(closed.confirmed_by)}
               />
+              {/* 8, "confirmed by two different users — the cash holder plus
+                  one other." */}
+              {!closed.confirmed_by ? (
+                <DetailRow
+                  label="Second confirmation"
+                  value={closed.closed_by === user?.id ? 'Needs someone else' : 'Awaiting'}
+                  tone="warning"
+                  last
+                >
+                  {closed.closed_by !== user?.id ? (
+                    <ActionButton
+                      size="sm"
+                      tone="approve"
+                      label={confirm.busy ? 'Confirming…' : 'Confirm'}
+                      onPress={() => confirmAction(
+                        'Confirm this count?',
+                        `Counted ${rupees(closed.counted_cash)}, variance ${rupees(closed.variance)}.`,
+                        confirm.run
+                      )}
+                    />
+                  ) : null}
+                </DetailRow>
+              ) : (
+                <DetailRow label="Confirmed by" value={closed.confirmed_by} tone="success" last />
+              )}
             </Card>
           </>
         ) : (

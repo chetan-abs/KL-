@@ -57,6 +57,20 @@ const REPORTS = [
     ],
   },
   {
+    // 8 — "bill-wise, never party totals only." A party-level total hides
+    // one very old bill behind five new ones; this is the row-per-invoice
+    // view the sheet asks for, alongside (not replacing) the party summary
+    // above, which section 12 already specifies by that name.
+    key: 'outstanding-bills',
+    label: 'Outstanding (Bill-wise)',
+    fetch: (p) => Reports.outstandingBills(p),
+    columns: [['invoice_no', 'Invoice'], ['party', 'Party'], ['bucket', 'Bucket'], ['outstanding', 'Outstanding', 'money']],
+    summary: (m, rows) => [
+      ['Bills', rows.length],
+      ['Total', rupeesShort(m?.total)],
+    ],
+  },
+  {
     key: 'salesman-performance',
     label: 'Salesman Performance',
     ranged: true,

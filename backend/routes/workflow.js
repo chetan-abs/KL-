@@ -269,16 +269,31 @@ router.get('/picks', requirePermission('picking.view'), async (req, res, next) =
   }
 });
 
-// GET /api/workflow/orders/:id/picksheet — the lines to walk
+/**
+ * GET /api/workflow/orders/:id/picksheet — the lines to walk.
+ *
+ * Section 7 — "Every SKU carries a bin code on the item master, printed
+ * against each line on the picking slip, lines sorted in walking order.
+ * Without this, pickers search rather than pick — the single largest
+ * hidden delay in the godown." `items.rack`/`items.godown` are the item
+ * master's own bin, joined in and sorted on here; `order_picks.rack` stays
+ * separate — that is what the picker records if the bin turned out wrong,
+ * a correction, not the reference.
+ *
+ * NULLs (an item never assigned a bin) sort last rather than first, so an
+ * un-binned line does not get walked to before every binned one.
+ */
 router.get('/orders/:id/picksheet', requirePermission('picking.view'), async (req, res, next) => {
   try {
     const [rows] = await pool.query(
       `SELECT oi.id AS order_item_id, oi.item_name, oi.qty AS need_qty,
+              i.rack AS bin_location, i.godown,
               p.picked_qty, p.status, p.rack, p.note
          FROM order_items oi
+         LEFT JOIN items i       ON i.masterid = oi.item_id
          LEFT JOIN order_picks p ON p.order_item_id = oi.id
         WHERE oi.order_id = ?
-        ORDER BY oi.id`,
+        ORDER BY i.rack IS NULL, i.rack, oi.id`,
       [Number(req.params.id)]
     );
     res.json({ lines: rows });

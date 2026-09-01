@@ -462,6 +462,62 @@ async function assignStockCount(conn, day) {
   return made;
 }
 
+/**
+ * 8, "Automatic reminders" — "Triggered per invoice at days 25, 40, 55.
+ * Delivery batched — one message per party per day listing every due or
+ * overdue invoice with number, date, days outstanding and amount. Copy to
+ * the owning salesman and to Papa. Stops on payment."
+ *
+ * "Stops on payment" needs no special handling — the WHERE clause only
+ * ever selects an invoice still short of its total, so a settled one
+ * simply never matches again. `claim()` is keyed on (customer, day), not
+ * (invoice, day), because the batching is the point: three invoices for
+ * one party crossing 25/40/55 on the same day is one message, not three.
+ */
+async function collectionReminders(conn, day) {
+  const [rows] = await conn.query(
+    `SELECT i.invoice_no, i.invoice_date, i.grand_total, i.amount_paid,
+            DATEDIFF(CURDATE(), i.invoice_date) AS age_days,
+            c.masterid AS customer_id, c.name AS party, c.salesman_id
+       FROM invoices i
+       JOIN customers c ON c.masterid = i.customer_id
+      WHERE i.status <> 'cancelled' AND i.grand_total > i.amount_paid
+        AND DATEDIFF(CURDATE(), i.invoice_date) IN (25, 40, 55)`
+  );
+  if (!rows.length) return 0;
+
+  const byParty = new Map();
+  for (const r of rows) {
+    if (!byParty.has(r.customer_id)) {
+      byParty.set(r.customer_id, { party: r.party, salesmanId: r.salesman_id, invoices: [] });
+    }
+    byParty.get(r.customer_id).invoices.push(r);
+  }
+
+  let sent = 0;
+  for (const [customerId, group] of byParty) {
+    if (!await claim(conn, { kind: 'collection_reminder', refType: 'customer', refId: customerId, day })) continue;
+
+    const body = group.invoices
+      .map((inv) => `${inv.invoice_no} (${inv.invoice_date}, ${inv.age_days}d) `
+        + `Rs ${(Number(inv.grand_total) - Number(inv.amount_paid)).toFixed(2)}`)
+      .join('; ');
+
+    if (group.salesmanId) {
+      await notify(conn, {
+        userId: group.salesmanId, tone: 'warning', title: `Collect from ${group.party}`,
+        body, refType: 'customer', refId: customerId,
+      });
+      sent += 1;
+    }
+    sent += await tell(conn, 'all', {
+      tone: 'warning', title: `Collection reminder — ${group.party}`,
+      body, refType: 'customer', refId: customerId,
+    });
+  }
+  return sent;
+}
+
 // ---------------------------------------------------------------------------
 
 const RULES = [
@@ -479,6 +535,7 @@ const RULES = [
   ['transfer_journal', (c, d) => transferJournalOverdue(c, d)],
   ['estimate_follow_up', (c, d) => estimateFollowUpDue(c, d)],
   ['stock_count', (c, d) => assignStockCount(c, d)],
+  ['collection_reminder', (c, d) => collectionReminders(c, d)],
 ];
 
 /**

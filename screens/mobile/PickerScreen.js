@@ -201,7 +201,15 @@ export default function PickerScreen({ role, orderId, party, onBack, onHandover,
                     }
                     style={styles.meta}
                   >
-                    {[item.rack ? `📍 Rack ${item.rack}` : null, `Need ${Number(item.need_qty)}`]
+                    {/* Section 7 — the item master's own bin (bin_location),
+                        not the picker's own correction (rack, entered only
+                        after they pick) — this is what stops a search. */}
+                    {[
+                      item.bin_location ? `📍 ${item.bin_location}` : null,
+                      item.godown ? item.godown : null,
+                      `Need ${Number(item.need_qty)}`,
+                      item.rack && item.rack !== item.bin_location ? `Found at ${item.rack}` : null,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </AppText>

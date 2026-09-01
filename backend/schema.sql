@@ -489,10 +489,14 @@ CREATE TABLE IF NOT EXISTS eod_closings (
   note varchar(255) DEFAULT NULL,
   closed_by varchar(20) DEFAULT NULL,
   closed_at datetime DEFAULT CURRENT_TIMESTAMP,
+  confirmed_by varchar(20) DEFAULT NULL,
+  confirmed_at datetime DEFAULT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY unique_day (close_date),
   KEY closed_by (closed_by),
-  CONSTRAINT eod_closings_ibfk_1 FOREIGN KEY (closed_by) REFERENCES users (id) ON DELETE SET NULL
+  KEY fk_eod_confirmer (confirmed_by),
+  CONSTRAINT eod_closings_ibfk_1 FOREIGN KEY (closed_by) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT fk_eod_confirmer FOREIGN KEY (confirmed_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ===========================================================================

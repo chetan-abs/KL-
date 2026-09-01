@@ -85,6 +85,8 @@ export const Billing = {
   creditNotes: () => body(api.get('/invoices/credit-notes')),
   raiseCreditNote: (payload) => body(api.post('/invoices/credit-notes', payload)),
   issueCreditNote: (id) => body(api.post(`/invoices/credit-notes/${id}/issue`, {})),
+  /** 8, "credit note limit" — Yash/Manoj clearing a note above the threshold. */
+  approveCreditNote: (id) => body(api.post(`/invoices/credit-notes/${id}/approve`, {})),
   /** 4.5 — Original, Duplicate and Triplicate, as three pages of one PDF. */
   printUrl: (invoiceId) => `${api.defaults.baseURL}/documents/invoice/${invoiceId}.pdf`,
 
@@ -218,6 +220,8 @@ export const Cash = {
   setChequeStatus: (id, status) => body(api.post(`/cash/cheques/${id}/status`, { status })),
   eod: (date) => body(api.get('/cash/eod', { params: { date } })),
   closeDay: (payload) => body(api.post('/cash/eod', payload)),
+  /** 8 — the second, different-user signature on the same counted figure. */
+  confirmDay: (id) => body(api.post(`/cash/eod/${id}/confirm`, {})),
   schemes: () => body(api.get('/cash/schemes')),
 
   /** Section 11 — Sibu names the KL account and the carrier. */
@@ -569,6 +573,8 @@ export const Reports = {
 
   dailySales: (params) => body(api.get('/reportsuite/daily-sales', { params })),
   outstanding: (params) => body(api.get('/reportsuite/outstanding', { params })),
+  /** 8 — bill-wise, never party totals only. The seven cash-discount-aligned buckets. */
+  outstandingBills: (params) => body(api.get('/reportsuite/outstanding-bills', { params })),
   salesmanPerformance: (params) => body(api.get('/reportsuite/salesman-performance', { params })),
   incentiveProgress: (period) => body(api.get(`/reportsuite/incentive-progress/${period}`)),
   purchases: (params) => body(api.get('/reportsuite/purchases', { params })),

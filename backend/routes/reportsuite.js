@@ -283,6 +283,72 @@ router.get('/outstanding', requirePermission('payments.view'), async (req, res, 
   } catch (err) { next(err); }
 });
 
+/**
+ * GET /api/reportsuite/outstanding-bills — 8, "Outstanding ledger":
+ * "Bill-wise, never party totals only. Buckets 0-2 / 3-10 / 11-20 (the
+ * cash-discount windows) / 21-30 / 31-45 / 46-60 / 60+. Filter by
+ * salesman / area / bucket."
+ *
+ * "A party-level total hides one very old bill behind five new ones.
+ * Bill-wise ageing is the only view that shows where the money actually
+ * is." One row per invoice, unlike GET /outstanding above (kept as it
+ * is — it feeds the older party-summary report section 12 already
+ * specifies by that name; this is the sheet's separate, bill-level view).
+ * The first three buckets mirror `utils/cashDiscount.js`'s own windows
+ * exactly, because those are the days that still earn the party a
+ * discount — the same ageing figure means two different things to two
+ * different people in the same row.
+ */
+router.get('/outstanding-bills', requirePermission('payments.view'), async (req, res, next) => {
+  try {
+    const params = [];
+    let sql = `
+      SELECT i.id, i.invoice_no, i.invoice_date, i.grand_total, i.amount_paid,
+             (i.grand_total - i.amount_paid) AS outstanding,
+             DATEDIFF(CURDATE(), i.invoice_date) AS age_days,
+             c.masterid AS customer_id, c.name AS party, c.city AS area, c.phone,
+             u.id AS salesman_id, u.name AS salesman
+        FROM invoices i
+        JOIN customers c ON c.masterid = i.customer_id
+        LEFT JOIN users u ON u.id = c.salesman_id
+       WHERE i.status <> 'cancelled' AND i.grand_total > i.amount_paid
+    `;
+    if (req.query.salesman_id) { sql += ' AND u.id = ?'; params.push(req.query.salesman_id); }
+    if (req.query.area) { sql += ' AND c.city = ?'; params.push(req.query.area); }
+    sql += ' ORDER BY age_days DESC LIMIT 1000';
+
+    const [rows] = await pool.query(sql, params);
+
+    const bucketOf = (days) => {
+      if (days <= 2) return '0-2';
+      if (days <= 10) return '3-10';
+      if (days <= 20) return '11-20';
+      if (days <= 30) return '21-30';
+      if (days <= 45) return '31-45';
+      if (days <= 60) return '46-60';
+      return '60+';
+    };
+
+    let bucketed = rows.map((r) => ({ ...r, bucket: bucketOf(Number(r.age_days)) }));
+    if (req.query.bucket) bucketed = bucketed.filter((r) => r.bucket === req.query.bucket);
+
+    send(res, {
+      rows: bucketed,
+      columns: [
+        ['invoice_no', 'Invoice'], ['party', 'Party'], ['area', 'Area'],
+        ['salesman', 'Salesman'], ['invoice_date', 'Date'], ['age_days', 'Days'],
+        ['bucket', 'Bucket'], ['grand_total', 'Billed'], ['amount_paid', 'Paid'],
+        ['outstanding', 'Outstanding'],
+      ],
+      filename: `outstanding-bills-${businessDay()}`,
+      meta: {
+        as_at: businessDay(),
+        total: bucketed.reduce((a, r) => a + num(r.outstanding), 0),
+      },
+    }, req.query.format);
+  } catch (err) { next(err); }
+});
+
 // ---------------------------------------------------------------------------
 // 3. Salesman Performance
 // ---------------------------------------------------------------------------

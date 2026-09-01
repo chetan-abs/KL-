@@ -33,7 +33,7 @@ import AsyncBoundary from '../../components/mobile/AsyncBoundary';
  * read the branch's.
  */
 export default function SalesmanDashboardScreen({
-  role, nav, onNewOrder, onNewDealer, onOpenScheme, onOpenHandover,
+  role, nav, onNewOrder, onNewDealer, onOpenScheme, onOpenHandover, onOpenCollections,
 }) {
   const COLORS = useThemeColors();
   const styles = React.useMemo(() => StyleSheet.create({
@@ -155,6 +155,29 @@ export default function SalesmanDashboardScreen({
                   <AppText weight="bold" size="sm">Hand in collections</AppText>
                   <AppText size="xs" color={COLORS.textSecondary} style={styles.meta}>
                     Declare the cash and cheques you are carrying
+                  </AppText>
+                </View>
+                <AppText size="md" color={COLORS.primary}>→</AppText>
+              </View>
+            </Card>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* 8, "Salesman view" — his parties only, oldest first, one tap to
+            call, one tap to remind. */}
+        {onOpenCollections ? (
+          <TouchableOpacity
+            onPress={onOpenCollections}
+            activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel="Open collections"
+          >
+            <Card>
+              <View style={styles.link}>
+                <View style={styles.flex}>
+                  <AppText weight="bold" size="sm">Collections</AppText>
+                  <AppText size="xs" color={COLORS.textSecondary} style={styles.meta}>
+                    Who owes you, oldest first — call or remind in one tap
                   </AppText>
                 </View>
                 <AppText size="md" color={COLORS.primary}>→</AppText>

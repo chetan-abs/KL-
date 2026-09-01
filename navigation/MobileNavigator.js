@@ -27,6 +27,7 @@ import SalesReturnScreen from '../screens/mobile/SalesReturnScreen';
 import ReturnApprovalScreen from '../screens/mobile/ReturnApprovalScreen';
 import CreditNoteScreen from '../screens/mobile/CreditNoteScreen';
 import SalesmanDashboardScreen from '../screens/mobile/SalesmanDashboardScreen';
+import CollectionsScreen from '../screens/mobile/CollectionsScreen';
 import BeatPlanScreen from '../screens/mobile/BeatPlanScreen';
 import CreateEstimateScreen from '../screens/mobile/CreateEstimateScreen';
 import SchemeScreen from '../screens/mobile/SchemeScreen';
@@ -361,8 +362,11 @@ export default function MobileNavigator() {
             onNewDealer={() => push('newDealer')}
             onOpenScheme={() => push('scheme')}
             onOpenHandover={() => push('handover')}
+            onOpenCollections={() => push('collections')}
           />
         );
+      case 'collections':
+        return <CollectionsScreen {...shared} />;
       case 'beatPlan':
         return <BeatPlanScreen {...shared} />;
       case 'createEstimate':

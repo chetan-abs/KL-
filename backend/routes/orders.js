@@ -412,7 +412,7 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       }
       const ids = [...new Set(items.map((i) => Number(i.item_id)))];
       const [masters] = await conn.query(
-        `SELECT masterid, name, hsn, gst_percent, cost_price,
+        `SELECT masterid, name, hsn, gst_percent, cost_price, godown,
                 pricing_type, base_price,
                 disc_dealer, disc_builder_direct, disc_builder_comm,
                 disc_retail_direct, disc_retail_comm, disc_electrician,
@@ -428,6 +428,11 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       let commissionTotal = 0;
       let qualifyingTotal = 0;
       const belowCostLines = [];
+      // Section 7 — "at punch, an order needing items from both godowns is
+      // flagged so the internal transfer is raised immediately, not
+      // discovered at picking." A Map, not a Set, so the notification can
+      // say which items are where, not just that a split exists.
+      const godownsNeeded = new Map();
       const processedItems = [];
 
       for (const line of items) {
@@ -479,6 +484,11 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
 
         const belowCost = isBelowCost(master, priced.rate);
         if (belowCost) belowCostLines.push(`${master.name} at ${priced.rate} against cost ${master.cost_price}`);
+
+        if (master.godown) {
+          if (!godownsNeeded.has(master.godown)) godownsNeeded.set(master.godown, []);
+          godownsNeeded.get(master.godown).push(master.name);
+        }
 
         // Commission is on the net sale value, before GST — the agent is paid
         // on what the business earned, not on the tax it collected.
@@ -777,6 +787,25 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
             tone: 'warning',
             title: `Below-cost pricing on ${soNumber}`,
             body: belowCostLines.join('; '),
+            actor: req.user.id,
+            refType: 'order',
+            refId: orderId,
+          });
+        }
+      }
+
+      // Section 7 — an order spanning both godowns is flagged now, not
+      // discovered at picking, so the internal transfer (routes/transfers.js,
+      // R-14) can be raised immediately.
+      if (godownsNeeded.size > 1) {
+        const summary = [...godownsNeeded.entries()]
+          .map(([g, names]) => `${g}: ${names.join(', ')}`).join(' · ');
+        for (const handler of await usersWhoCan(conn, 'purchases.create')) {
+          await notify(conn, {
+            userId: handler,
+            tone: 'warning',
+            title: `${soNumber} needs both godowns`,
+            body: `${summary} — raise the internal transfer now, not at picking.`,
             actor: req.user.id,
             refType: 'order',
             refId: orderId,

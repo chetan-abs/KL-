@@ -811,7 +811,7 @@ router.post('/eod', requirePermission('eod.close'), async (req, res, next) => {
     );
 
     res.status(201).json({
-      message: 'Day closed',
+      message: 'Day closed — needs a second confirmation.',
       id: result.insertId,
       expected_cash: expected,
       counted_cash: counted,
@@ -821,6 +821,35 @@ router.post('/eod', requirePermission('eod.close'), async (req, res, next) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'That day is already closed' });
     }
+    next(err);
+  }
+});
+
+/**
+ * POST /api/cash/eod/:id/confirm — 8, "daily cash count": "confirmed by
+ * two different users — the cash holder plus one other." The close already
+ * wrote the moment Sibu counted; this is the second signature on the same
+ * figure, and it must be a different person from whoever closed it —
+ * otherwise "two users" is one user pressing two buttons.
+ */
+router.post('/eod/:id/confirm', requirePermission('eod.close'), async (req, res, next) => {
+  try {
+    const [[row]] = await pool.query('SELECT closed_by, confirmed_by FROM eod_closings WHERE id = ?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'No such closing' });
+    if (row.confirmed_by) return res.status(409).json({ error: 'Already confirmed.' });
+    if (row.closed_by === req.user.id) {
+      return res.status(403).json({
+        error: 'The cash count needs a second person — you already closed it.',
+        code: 'SAME_USER',
+      });
+    }
+
+    await pool.query(
+      'UPDATE eod_closings SET confirmed_by = ?, confirmed_at = NOW() WHERE id = ?',
+      [req.user.id, req.params.id]
+    );
+    res.json({ message: 'Confirmed.', id: Number(req.params.id) });
+  } catch (err) {
     next(err);
   }
 });
