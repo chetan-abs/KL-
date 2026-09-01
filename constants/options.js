@@ -87,11 +87,22 @@ export const UNDELIVERED_REASONS = [
   { value: 'address_wrong', label: 'Address galat' },
 ];
 
+/**
+ * Section 6's own fixed list, per line — backend/routes/returns.js's
+ * RETURN_REASONS is the one actually enforced; this is its client copy.
+ * "Damaged in transit" and "Damaged or defective piece" are kept separate
+ * because they are different conversations with a supplier: one is theirs
+ * to answer for, the other may not be.
+ */
 export const RETURN_REASONS = [
-  { value: 'damaged', label: 'Damaged in transit' },
+  { value: 'damaged_in_transit', label: 'Damaged in transit' },
+  { value: 'damaged_defective', label: 'Damaged or defective piece' },
   { value: 'wrong_item', label: 'Wrong item supplied' },
-  { value: 'excess', label: 'Excess supplied' },
-  { value: 'quality', label: 'Quality complaint' },
+  { value: 'wrong_size_rating', label: 'Wrong size or rating' },
+  { value: 'excess_supplied', label: 'Excess supplied' },
+  { value: 'short_supply_adjustment', label: 'Short supply adjustment' },
+  { value: 'customer_cancelled', label: 'Customer cancelled' },
+  { value: 'quality_complaint', label: 'Quality complaint' },
 ];
 
 /** What a new item can be filed under. */

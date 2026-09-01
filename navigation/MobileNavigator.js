@@ -24,6 +24,7 @@ import PurchaseScreen from '../screens/mobile/PurchaseScreen';
 import RateAlertScreen from '../screens/mobile/RateAlertScreen';
 import NewItemScreen from '../screens/mobile/NewItemScreen';
 import SalesReturnScreen from '../screens/mobile/SalesReturnScreen';
+import ReturnApprovalScreen from '../screens/mobile/ReturnApprovalScreen';
 import CreditNoteScreen from '../screens/mobile/CreditNoteScreen';
 import SalesmanDashboardScreen from '../screens/mobile/SalesmanDashboardScreen';
 import BeatPlanScreen from '../screens/mobile/BeatPlanScreen';
@@ -423,6 +424,9 @@ export default function MobileNavigator() {
             onOpenPasswordRequests={
               userCan(user, 'employees.permissions') ? () => push('passwordRequests') : null
             }
+            onOpenReturnApproval={
+              userCan(user, 'verification') ? () => push('returnApproval') : null
+            }
           />
         );
       case 'attendance':
@@ -431,6 +435,8 @@ export default function MobileNavigator() {
         return <ChangePasswordScreen {...shared} />;
       case 'passwordRequests':
         return <PasswordRequestsScreen {...shared} />;
+      case 'returnApproval':
+        return <ReturnApprovalScreen {...shared} />;
 
       // Everybody's own pay, reached from Profile. `params.from` is what turns
       // on the back link — the same screens are opened without it from a

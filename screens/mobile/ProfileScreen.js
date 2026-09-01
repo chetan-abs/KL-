@@ -29,7 +29,7 @@ import ActionButton from '../../components/mobile/ActionButton';
 export default function ProfileScreen({
   role, user, nav, onSignOut, onOpenPeople,
   onOpenSalary, onOpenAdvances, onOpenIncentive, onOpenAttendance,
-  onOpenChangePassword, onOpenPasswordRequests,
+  onOpenChangePassword, onOpenPasswordRequests, onOpenReturnApproval,
 }) {
   const COLORS = useThemeColors();
   const styles = React.useMemo(() => StyleSheet.create({
@@ -56,6 +56,10 @@ export default function ProfileScreen({
 
   const wildcard = granted.includes(WILDCARD);
   const canManagePeople = userCan(user, 'employees.permissions');
+  // Section 6 — Sonu's physical check of a sales return (or Hirak's, backing
+  // him up). Same grant his goods-verification duty already uses; not worth
+  // a tab slot on its own, so it costs a screen push like Attendance's does.
+  const canCheckReturns = userCan(user, 'verification');
 
   return (
     <Screen
@@ -116,8 +120,16 @@ export default function ProfileScreen({
           title="Check in / check out"
           subtitle="Today's status, lunch break, and the day's photo"
           onPress={onOpenAttendance}
-          last
+          last={!canCheckReturns}
         />
+        {canCheckReturns ? (
+          <LinkRow
+            title="Sales returns to check"
+            subtitle="Step 2 of 3 — the physical good/damaged split"
+            onPress={onOpenReturnApproval}
+            last
+          />
+        ) : null}
       </Card>
 
       {/* Everybody's own pay — except an owner, who draws none. Yash and

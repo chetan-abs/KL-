@@ -199,6 +199,15 @@ router.post('/credit-notes/:id/issue', requirePermission('billing.create'), asyn
     );
     await recomputeBalance(conn, note.customer_id);
 
+    // Section 6, step 3 of 3 — issuing a return-sourced note is what closes
+    // the loop entry (1) and Sonu's check (2) opened.
+    if (note.return_id) {
+      await conn.query(
+        "UPDATE sales_returns SET status = 'credited' WHERE id = ? AND status = 'approved'",
+        [note.return_id]
+      );
+    }
+
     // Section 14 lists two credit-note flows — "Credit Notes (on approval)" and
     // "Cash Discount Credit Notes (auto, FIFO calculation)" — and both arrive
     // here, because issuing is the single moment a note becomes money the party

@@ -150,13 +150,26 @@ export const Purchases = {
 // Returns
 // ---------------------------------------------------------------------------
 export const Returns = {
-  list: () => body(api.get('/returns')),
+  list: (status) => body(api.get('/returns', { params: { status } })),
+  get: (id) => body(api.get(`/returns/${id}`)),
   /**
-   * R-09: the original invoice is mandatory. A reason and a photograph are too.
-   * R-10 starts a two-hour clock on the credit note the moment this returns.
+   * Section 6 — step 1 of 3, entry. R-09: the original invoice is mandatory.
+   * A reason per line and a photograph are too. Stock does not move and no
+   * credit note exists yet — that is steps 2 and 3.
    */
   raise: (payload) => body(api.post('/returns', payload)),
-  accept: (id) => body(api.post(`/returns/${id}/accept`, {})),
+  /**
+   * Step 2 — Sonu's (or Hirak's) physical check. `lines` is
+   * `[{ return_item_id, good_qty, damaged_qty, damaged_photo_id }]`; this is
+   * also the step that moves stock and auto-raises the (pending) credit
+   * note R-10's two-hour clock starts against.
+   */
+  approve: (id, lines) => body(api.post(`/returns/${id}/approve`, { lines })),
+
+  /** 6.1 — the damaged-goods bucket: excluded from sellable stock. */
+  damaged: (disposed) => body(api.get('/returns/damaged', { params: { disposed } })),
+  disposeDamaged: (id, disposition, note) =>
+    body(api.post(`/returns/damaged/${id}/dispose`, { disposition, note })),
 };
 
 // ---------------------------------------------------------------------------

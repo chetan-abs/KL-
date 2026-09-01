@@ -1266,7 +1266,9 @@ CREATE TABLE IF NOT EXISTS sales_returns (
   total_amount decimal(15,2) NOT NULL DEFAULT '0.00',
   penalty_total decimal(15,2) NOT NULL DEFAULT '0.00',
   credit_total decimal(15,2) DEFAULT NULL,
-  status enum('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
+  status enum('pending','approved','credited','accepted','rejected') NOT NULL DEFAULT 'pending',
+  approved_by varchar(20) DEFAULT NULL,
+  approved_at datetime DEFAULT NULL,
   reason varchar(60) DEFAULT NULL,
   photo_id int DEFAULT NULL,
   cn_due_at datetime DEFAULT NULL,
@@ -1281,6 +1283,8 @@ CREATE TABLE IF NOT EXISTS sales_returns (
   KEY created_by (created_by),
   KEY idx_cn_due (cn_due_at),
   KEY fk_return_photo (photo_id),
+  KEY fk_return_approver (approved_by),
+  CONSTRAINT fk_return_approver FOREIGN KEY (approved_by) REFERENCES users (id) ON DELETE SET NULL,
   CONSTRAINT fk_return_photo FOREIGN KEY (photo_id) REFERENCES attachments (id) ON DELETE SET NULL,
   CONSTRAINT sales_returns_ibfk_1 FOREIGN KEY (customer_id) REFERENCES customers (masterid),
   CONSTRAINT sales_returns_ibfk_2 FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE SET NULL,
@@ -1298,6 +1302,10 @@ CREATE TABLE IF NOT EXISTS sales_return_items (
   item_name varchar(100) NOT NULL,
   sold_qty decimal(15,4) NOT NULL,
   return_qty decimal(15,4) NOT NULL,
+  approved_qty decimal(15,4) DEFAULT NULL,
+  good_qty decimal(15,4) DEFAULT NULL,
+  damaged_qty decimal(15,4) DEFAULT NULL,
+  damaged_photo_id int DEFAULT NULL,
   rate decimal(15,2) NOT NULL,
   amount decimal(15,2) NOT NULL,
   reason varchar(60) DEFAULT NULL,
@@ -1308,6 +1316,8 @@ CREATE TABLE IF NOT EXISTS sales_return_items (
   PRIMARY KEY (id),
   KEY idx_return (return_id),
   KEY item_id (item_id),
+  KEY fk_return_item_photo (damaged_photo_id),
+  CONSTRAINT fk_return_item_photo FOREIGN KEY (damaged_photo_id) REFERENCES attachments (id) ON DELETE SET NULL,
   CONSTRAINT sales_return_items_ibfk_1 FOREIGN KEY (return_id) REFERENCES sales_returns (id) ON DELETE CASCADE,
   CONSTRAINT sales_return_items_ibfk_2 FOREIGN KEY (item_id) REFERENCES items (masterid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -2010,6 +2020,39 @@ CREATE TABLE IF NOT EXISTS order_overrides (
   KEY overridden_by (overridden_by),
   CONSTRAINT order_overrides_ibfk_1 FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
   CONSTRAINT order_overrides_ibfk_2 FOREIGN KEY (overridden_by) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- damaged_stock
+-- Added by migration. See migrations/ for the reasoning behind this table.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS damaged_stock (
+  id int NOT NULL AUTO_INCREMENT,
+  item_id int NOT NULL,
+  item_name varchar(100) NOT NULL,
+  return_id int DEFAULT NULL,
+  return_item_id int DEFAULT NULL,
+  qty decimal(15,4) NOT NULL,
+  unit_cost decimal(15,2) DEFAULT NULL,
+  condition_note varchar(255) DEFAULT NULL,
+  disposition enum('undecided','claim','repair','scrap','second') NOT NULL DEFAULT 'undecided',
+  disposition_note varchar(255) DEFAULT NULL,
+  disposed_by varchar(20) DEFAULT NULL,
+  disposed_at datetime DEFAULT NULL,
+  created_by varchar(20) DEFAULT NULL,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_item (item_id),
+  KEY idx_disposition (disposition),
+  KEY return_id (return_id),
+  KEY return_item_id (return_item_id),
+  KEY disposed_by (disposed_by),
+  KEY created_by (created_by),
+  CONSTRAINT damaged_stock_ibfk_1 FOREIGN KEY (item_id) REFERENCES items (masterid) ON DELETE CASCADE,
+  CONSTRAINT damaged_stock_ibfk_2 FOREIGN KEY (return_id) REFERENCES sales_returns (id) ON DELETE SET NULL,
+  CONSTRAINT damaged_stock_ibfk_3 FOREIGN KEY (return_item_id) REFERENCES sales_return_items (id) ON DELETE SET NULL,
+  CONSTRAINT damaged_stock_ibfk_4 FOREIGN KEY (disposed_by) REFERENCES users (id) ON DELETE SET NULL,
+  CONSTRAINT damaged_stock_ibfk_5 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ===========================================================================

@@ -6,6 +6,7 @@ import { RETURN_REASONS } from '../../constants/options';
 import { Billing, Returns } from '../../services/endpoints';
 import { useApi, useAction } from '../../hooks/useApi';
 import { rupees } from '../../utils/format';
+import { captureAndUpload } from '../../utils/capture';
 import { confirmAction, showAlert } from '../../services/confirm';
 import AppText from '../../components/AppText';
 import Screen from '../../components/mobile/Screen';
@@ -14,21 +15,26 @@ import Card from '../../components/mobile/Card';
 import DetailRow from '../../components/mobile/DetailRow';
 import QtyBox from '../../components/mobile/QtyBox';
 import Select from '../../components/mobile/Select';
+import Badge from '../../components/mobile/Badge';
+import PhotoBox from '../../components/mobile/PhotoBox';
 import ActionButton from '../../components/mobile/ActionButton';
 import NoticeBar from '../../components/mobile/NoticeBar';
 import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 
 /**
- * 16 — Sales return against an invoice.
+ * 16 — Sales return against an invoice. Step 1 of 3 (section 6, September
+ * 2026): entry only. Whoever receives the goods records what they were
+ * told — items, quantity, a reason per line, a photo — and that is all this
+ * screen does. Stock does not move and no credit note exists yet: Sonu's
+ * physical check (ReturnApprovalScreen) is what moves stock and raises the
+ * note, and the entry's own creator is never the one who can approve it —
+ * enforced server-side, which is why this screen has no "accept" button any
+ * more.
  *
  * Quantities are capped at what was billed: a return of more than went out is
- * always a keying error, and letting it through would credit the party twice and
- * invent stock that never existed. The server enforces the same cap.
- *
- * Accepting writes `return` movements and recomputes the cached quantity in one
- * transaction, then raises a credit note *pending* — taking goods back and
- * agreeing what they are worth are two decisions, and only the first one
- * happened here.
+ * always a keying error, and letting it through would credit the party twice
+ * and invent stock that never existed. The server enforces the same cap; the
+ * rate is read server-side too, from the invoice itself, never typed here.
  */
 export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
   const COLORS = useThemeColors();
@@ -51,6 +57,7 @@ export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
 
   const [returns, setReturns] = React.useState({});
   const [reasons, setReasons] = React.useState({});
+  const [photoRef, setPhotoRef] = React.useState(null);
 
   const options = (invoices.data?.invoices || []).map((i) => ({
     value: i.id,
@@ -67,31 +74,37 @@ export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
   const overreturn = rows.some((r) => r.over);
   const nothing = total <= 0;
 
-  const raise = useAction(
+  const capture = useAction(
     async () => {
-      const created = await Returns.raise({
+      const ref = await captureAndUpload({ refType: 'sales_return', refId: invoiceId });
+      if (!ref) return null; // cancelled — not a failure
+      setPhotoRef(ref);
+      return ref;
+    },
+    { onFail: (message) => showAlert('Could not capture', message) }
+  );
+
+  const raise = useAction(
+    () =>
+      Returns.raise({
         customer_id: detail.data.invoice.customer_id,
         invoice_id: invoiceId,
+        photo_id: photoRef,
+        reason: reasons[rows.find((r) => r.qty > 0)?.id] || RETURN_REASONS[0].value,
         lines: rows
           .filter((r) => r.qty > 0)
           .map((r) => ({
             item_id: r.item_id,
             return_qty: r.qty,
-            rate: Number(r.rate),
             reason: reasons[r.id] || RETURN_REASONS[0].value,
           })),
-      });
-      return Returns.accept(created.return_id);
-    },
+      }),
     {
-      onDone: (result) => {
-        showAlert(
-          'Return accepted',
-          `Credit note ${result.note_no} raised for ${rupees(result.amount)}. Issue it to reduce their balance.`
-        );
+      onDone: () => {
+        showAlert('Return entered', 'Sent to Sonu for a physical check before any credit note is raised.');
         onDone?.();
       },
-      onFail: (message) => showAlert('Could not accept', message),
+      onFail: (message) => showAlert('Could not enter', message),
     }
   );
 
@@ -113,15 +126,15 @@ export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
       footer={
         invoiceId ? (
           <ActionButton
-            label={nothing ? 'Nothing to return' : `Accept Return · ${rupees(total)}`}
+            label={nothing ? 'Nothing to return' : `Enter Return · ${rupees(total)}`}
             tone="brand"
-            disabled={nothing || overreturn}
+            disabled={nothing || overreturn || !photoRef}
             loading={raise.busy}
-            loadingLabel="Accepting"
+            loadingLabel="Entering"
             onPress={() =>
               confirmAction(
-                'Accept this return?',
-                `${rupees(total)} credited to ${detail.data.invoice.party_name}. Stock re-enters the ledger as an adjustment.`,
+                'Enter this return?',
+                `${rupees(total)} — sent to Sonu for a physical check. Stock does not move until he approves it.`,
                 raise.run
               )
             }
@@ -196,11 +209,26 @@ export default function SalesReturnScreen({ role, onBack, onDone, nav}) {
             </Card>
 
             <Card flush>
-              <DetailRow label="Credit value" value={rupees(total)} tone="brand" last />
+              <DetailRow label="Entered value" value={rupees(total)} tone="brand" last />
+            </Card>
+
+            <Card
+              title="Photo (mandatory)"
+              right={<Badge tone={photoRef ? 'success' : 'danger'}>{photoRef ? 'Captured' : 'Required'}</Badge>}
+            >
+              <PhotoBox
+                title="Photo of the returned goods"
+                captured={Boolean(photoRef)}
+                onPress={capture.run}
+              />
+              {capture.busy ? (
+                <NoticeBar tone="info" glyph="📷" style={styles.meta}>Uploading the photo…</NoticeBar>
+              ) : null}
             </Card>
 
             <NoticeBar tone="info" glyph="↩">
-              Returned stock re-enters the ledger as an adjustment. The original movement is never edited.
+              This is step 1 of 3: entry only. Stock does not move and no credit
+              note exists until Sonu (or Hirak) physically checks it.
             </NoticeBar>
           </AsyncBoundary>
         ) : null}
