@@ -3,7 +3,7 @@ import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { useThemeColors } from '../../context/ThemeContext';
+import { useTheme, useThemeColors } from '../../context/ThemeContext';
 import { SIDEBAR_WIDTH } from '../../hooks/useBreakpoint';
 import AppText from '../AppText';
 
@@ -21,6 +21,7 @@ import AppText from '../AppText';
  */
 export default function SideNav({ tabs = [], active, onSelect, user, roleTitle }) {
   const COLORS = useThemeColors();
+  const { resolved, setTheme } = useTheme();
   const styles = React.useMemo(() => StyleSheet.create({
   rail: {
     width: SIDEBAR_WIDTH,
@@ -29,12 +30,24 @@ export default function SideNav({ tabs = [], active, onSelect, user, roleTitle }
     borderRightColor: COLORS.headerEdge,
   },
   brand: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 18,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.headerEdge,
   },
+  brandText: { flex: 1 },
   place: { marginTop: 2 },
+  themeToggle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
 
   list: { flex: 1 },
   listBody: { paddingVertical: 12, paddingHorizontal: 10, gap: 2 },
@@ -74,12 +87,27 @@ export default function SideNav({ tabs = [], active, onSelect, user, roleTitle }
   return (
     <View style={[styles.rail, { paddingTop: Math.max(insets.top, 20) }]}>
       <View style={styles.brand}>
-        <AppText weight="bold" size="md" color={COLORS.white} numberOfLines={1}>
-          K.L. ELECTRICALS
-        </AppText>
-        <AppText size="xs" color={COLORS.brandMuted} style={styles.place}>
-          Lakhtokia, Guwahati
-        </AppText>
+        <View style={styles.brandText}>
+          <AppText weight="bold" size="md" color={COLORS.white} numberOfLines={1}>
+            K.L. ELECTRICALS
+          </AppText>
+          <AppText size="xs" color={COLORS.brandMuted} style={styles.place}>
+            Lakhtokia, Guwahati
+          </AppText>
+        </View>
+        <TouchableOpacity
+          style={styles.themeToggle}
+          onPress={() => setTheme(resolved === 'dark' ? 'light' : 'dark')}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel={resolved === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          <MaterialCommunityIcons
+            name={resolved === 'dark' ? 'weather-sunny' : 'weather-night'}
+            size={16}
+            color={COLORS.white}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listBody} showsVerticalScrollIndicator={false}>
