@@ -1,14 +1,22 @@
 /**
  * The order pipeline: approval, picking and verification.
  *
- *   POST /api/workflow/orders/:id/approve   Manas   (R01)
+ *   POST /api/workflow/orders/:id/approve   Manas, or automatic at punch (4.2)
  *   POST /api/workflow/orders/:id/reject    Manas
  *   GET  /api/workflow/picks                Ashish
  *   POST /api/workflow/orders/:id/pick      Ashish
- *   POST /api/workflow/orders/:id/handover  Ashish
- *   GET  /api/workflow/verifications        Ajit
- *   POST /api/workflow/orders/:id/verify    Ajit    (R02)
+ *   POST /api/workflow/orders/:id/handover  Ashish — also auto-verifies (4.2)
+ *   GET  /api/workflow/verifications        Sonu
+ *   POST /api/workflow/orders/:id/verify    Sonu    (R02)
  *   GET  /api/workflow/orders/:id/events    audit trail
+ *
+ * September 2026, section 4.2 — CHANGED FROM v1 twice over: Manas's approval
+ * of every order is gone (`routes/orders.js` decides it automatically at
+ * punch, see `approveOrder` below), and verification is no longer 100% —
+ * `handover` decides whether an order needs Sonu's count or is auto-verified
+ * against what was picked, the same way approval is auto-decided. Both are
+ * "quiet unless something is actually wrong", not "no human ever looks
+ * again" — see the exception conditions in each.
  *
  * Billing, dispatch and delivery live in their own modules; they are separate
  * duties held by separate people, and a single pipeline router would have to be
@@ -34,6 +42,12 @@ router.use(authenticate);
 // Rejects a non-numeric :id before any handler binds it into SQL.
 numericId(router);
 
+// 4.2 — "contains a high-value SKU above the set per-unit value." No figure
+// is given, same as the order-value threshold in routes/orders.js; set
+// VERIFICATION_HIGH_VALUE_THRESHOLD in .env once Yash names one. 0/unset
+// disables this leg of the exception check rather than flagging every line.
+const VERIFICATION_HIGH_VALUE_THRESHOLD = Number(process.env.VERIFICATION_HIGH_VALUE_THRESHOLD) || 0;
+
 /** A pick line's outcome follows from its count, so the two cannot disagree. */
 function pickStatus(picked, need) {
   const count = Number(picked);
@@ -47,6 +61,81 @@ function pickStatus(picked, need) {
 // Approval — Manas
 // ---------------------------------------------------------------------------
 
+/**
+ * Moves an order into 'approved' and does everything that move entails —
+ * the Tally sales-order push (section 14) and telling picking there is work.
+ * Shared between the manual approve route below and `POST /orders`'s own
+ * auto-approval (4.2: "everything else — about 95% of orders — straight to
+ * picking, no approval, no human gate"), so an auto-approved order gets
+ * exactly the same side effects a Manas-approved one always has — nothing
+ * about what approval DOES changes, only who or what decides to grant it.
+ *
+ * Runs inside the caller's transaction and does not commit; the caller does.
+ * Returns `{ ok: false, reason, message }` on an illegal transition, the same
+ * shape `transition()` itself returns.
+ */
+async function approveOrder(conn, { orderId, userId, userName, note = null }) {
+  const result = await transition(conn, {
+    orderId, to: 'approved', expectedFrom: ['pending', 'confirmed'], note, userId,
+  });
+  if (!result.ok) return result;
+
+  // Section 14: "Sales Orders (on approval)". R-01 makes approval the moment
+  // the order becomes real, so it is the moment Tally hears about it.
+  const [[approved]] = await conn.query(
+    `SELECT o.*, c.name AS party_name FROM orders o
+       JOIN customers c ON c.masterid = o.customer_id WHERE o.order_id = ?`,
+    [orderId]
+  );
+  const [approvedLines] = await conn.query(
+    `SELECT oi.*, i.unit FROM order_items oi
+       LEFT JOIN items i ON i.masterid = oi.item_id WHERE oi.order_id = ?`,
+    [orderId]
+  );
+  await tallyEnqueue(conn, {
+    kind: 'sales_order',
+    refType: 'order',
+    refId: orderId,
+    payload: salesOrderXml({
+      order: approved, lines: approvedLines, company: tallyConfig().company }),
+    userId,
+  });
+
+  // Picking is told there is work; the salesman is told their order cleared.
+  const [[order]] = await conn.query(
+    `SELECT o.created_by, c.name AS party FROM orders o
+       JOIN customers c ON c.masterid = o.customer_id
+      WHERE o.order_id = ?`,
+    [orderId]
+  );
+
+  for (const pickerId of await usersWithGrant(conn, 'picking')) {
+    await notify(conn, {
+      userId: pickerId,
+      tone: 'info',
+      title: 'Order ready to pick',
+      body: `${order.party} — waiting in the godown.`,
+      actor: userName,
+      refType: 'order',
+      refId: orderId,
+    });
+  }
+
+  if (order.created_by && order.created_by !== userId) {
+    await notify(conn, {
+      userId: order.created_by,
+      tone: 'success',
+      title: 'Order approved',
+      body: `${order.party} approved — sent to picking.`,
+      actor: userName,
+      refType: 'order',
+      refId: orderId,
+    });
+  }
+
+  return { ok: true };
+}
+
 // POST /api/workflow/orders/:id/approve
 router.post('/orders/:id/approve', requirePermission('orders.approve'), async (req, res, next) => {
   const orderId = Number(req.params.id);
@@ -56,12 +145,8 @@ router.post('/orders/:id/approve', requirePermission('orders.approve'), async (r
   try {
     await conn.beginTransaction();
 
-    const result = await transition(conn, {
-      orderId,
-      to: 'approved',
-      expectedFrom: ['pending', 'confirmed'],
-      note: req.body?.note || null,
-      userId: req.user.id,
+    const result = await approveOrder(conn, {
+      orderId, userId: req.user.id, userName: req.user.name, note: req.body?.note || null,
     });
 
     if (!result.ok) {
@@ -69,59 +154,6 @@ router.post('/orders/:id/approve', requirePermission('orders.approve'), async (r
       return res
         .status(result.reason === 'NOT_FOUND' ? 404 : 409)
         .json({ error: result.message, code: result.reason });
-    }
-
-    // Section 14: "Sales Orders (on approval)". R-01 makes approval the moment
-    // the order becomes real, so it is the moment Tally hears about it.
-    const [[approved]] = await conn.query(
-      `SELECT o.*, c.name AS party_name FROM orders o
-         JOIN customers c ON c.masterid = o.customer_id WHERE o.order_id = ?`,
-      [orderId]
-    );
-    const [approvedLines] = await conn.query(
-      `SELECT oi.*, i.unit FROM order_items oi
-         LEFT JOIN items i ON i.masterid = oi.item_id WHERE oi.order_id = ?`,
-      [orderId]
-    );
-    await tallyEnqueue(conn, {
-      kind: 'sales_order',
-      refType: 'order',
-      refId: orderId,
-      payload: salesOrderXml({
-        order: approved, lines: approvedLines, company: tallyConfig().company }),
-      userId: req.user.id,
-    });
-
-    // Picking is told there is work; the salesman is told their order cleared.
-    const [[order]] = await conn.query(
-      `SELECT o.created_by, c.name AS party FROM orders o
-         JOIN customers c ON c.masterid = o.customer_id
-        WHERE o.order_id = ?`,
-      [orderId]
-    );
-
-    for (const pickerId of await usersWithGrant(conn, 'picking')) {
-      await notify(conn, {
-        userId: pickerId,
-        tone: 'info',
-        title: 'Order ready to pick',
-        body: `${order.party} — approved and waiting in the godown.`,
-        actor: req.user.name,
-        refType: 'order',
-        refId: orderId,
-      });
-    }
-
-    if (order.created_by) {
-      await notify(conn, {
-        userId: order.created_by,
-        tone: 'success',
-        title: 'Order approved',
-        body: `${order.party} approved — sent to picking.`,
-        actor: req.user.name,
-        refType: 'order',
-        refId: orderId,
-      });
     }
 
     await conn.commit();
@@ -497,14 +529,77 @@ router.post('/orders/:id/handover', requirePermission('picking.record'), async (
       [orderId]
     );
 
+    // 4.2 — CHANGED FROM v1: verification is exception-based now, not 100%.
+    // "With order approval removed, this is the only human gate before
+    // billing; if it stays at 100% the queue simply carries a new name."
+    // A short or missing pick is ALWAYS an exception on its own — nobody
+    // auto-signs-off a pick that did not go as ordered.
+    const exceptionReasons = [];
+    if (short.n > 0) exceptionReasons.push(`${short.n} line(s) short of the SO`);
+
+    const [lines] = await conn.query(
+      `SELECT oi.id, oi.item_name, oi.qty, oi.rate, p.picked_qty
+         FROM order_items oi LEFT JOIN order_picks p ON p.order_item_id = oi.id
+        WHERE oi.order_id = ?`,
+      [orderId]
+    );
+    if (lines.length > 15) exceptionReasons.push(`${lines.length} line items`);
+
+    if (VERIFICATION_HIGH_VALUE_THRESHOLD > 0) {
+      const highValue = lines.find((l) => Number(l.rate) > VERIFICATION_HIGH_VALUE_THRESHOLD);
+      if (highValue) exceptionReasons.push(`${highValue.item_name} above the per-unit value set for review`);
+    }
+
+    const [[returnHistory]] = await conn.query(
+      `SELECT COUNT(*) AS n, c.name AS party FROM sales_returns sr
+         JOIN orders o ON o.customer_id = sr.customer_id
+         JOIN customers c ON c.masterid = o.customer_id
+        WHERE o.order_id = ? AND sr.status = 'accepted'
+        GROUP BY c.name`,
+      [orderId]
+    );
+    if (returnHistory?.n > 0) exceptionReasons.push(`${returnHistory.party} carries a sales-return history`);
+
+    // "The picker is new — first 30 days." Proxied by account creation,
+    // which is the closest thing to a start date this schema records.
+    const [[newPicker]] = await conn.query(
+      `SELECT u.name FROM order_picks p JOIN users u ON u.id = p.picked_by
+        WHERE p.order_id = ? AND u.created_at > (NOW() - INTERVAL 30 DAY)
+        LIMIT 1`,
+      [orderId]
+    );
+    if (newPicker) exceptionReasons.push(`${newPicker.name} is a new picker (first 30 days)`);
+
+    let finalStatus = 'picked';
+    if (!exceptionReasons.length) {
+      // Auto-verified against what was actually PICKED, never the ordered
+      // figure — "the invoice bills what was counted, not what was ordered"
+      // holds exactly the same way here as it does for a human count.
+      for (const line of lines) {
+        const counted = line.picked_qty === null ? line.qty : line.picked_qty;
+        await conn.query(
+          `INSERT INTO order_verifications (order_id, order_item_id, expected_qty, counted_qty, is_mismatch, verified_by)
+           VALUES (?, ?, ?, ?, FALSE, NULL)
+           ON DUPLICATE KEY UPDATE
+             counted_qty = VALUES(counted_qty), is_mismatch = FALSE, verified_by = NULL, verified_at = NOW()`,
+          [orderId, line.id, qty(counted), qty(counted)]
+        );
+      }
+      const autoVerify = await transition(conn, {
+        orderId, to: 'verified', expectedFrom: 'picked', userId: req.user.id,
+        note: 'Auto-verified at handover — no exception conditions (4.2).',
+      });
+      if (autoVerify.ok) finalStatus = 'verified';
+    }
+
     for (const verifierId of await usersWithGrant(conn, 'verification')) {
       await notify(conn, {
         userId: verifierId,
-        tone: short.n ? 'warning' : 'info',
-        title: 'Order ready to verify',
-        body: short.n
-          ? `Picked with ${short.n} line(s) short of the SO.`
-          : 'Picked in full and waiting for the count.',
+        tone: exceptionReasons.length ? 'warning' : 'info',
+        title: finalStatus === 'verified' ? 'Order auto-verified' : 'Order ready to verify',
+        body: finalStatus === 'verified'
+          ? 'Picked in full and verified automatically — nothing needs your count.'
+          : exceptionReasons.join('; '),
         actor: req.user.name,
         refType: 'order',
         refId: orderId,
@@ -512,7 +607,13 @@ router.post('/orders/:id/handover', requirePermission('picking.record'), async (
     }
 
     await conn.commit();
-    res.json({ message: 'Handed over for verification', order_id: orderId, short_lines: short.n });
+    res.json({
+      message: finalStatus === 'verified' ? 'Auto-verified — sent to billing.' : 'Handed over for verification',
+      order_id: orderId,
+      status: finalStatus,
+      short_lines: short.n,
+      exception_reasons: exceptionReasons.length ? exceptionReasons : null,
+    });
   } catch (err) {
     await conn.rollback();
     next(err);
@@ -766,4 +867,9 @@ router.get('/orders/:id/events', requirePermission('orders.view'), async (req, r
   }
 });
 
+// `approveOrder` is attached to the router function itself rather than
+// switching this file to a named-exports object — every other route module
+// exports its router the same bare way, and `require('./workflow').router`
+// everywhere else would be a bigger diff than one extra property.
 module.exports = router;
+module.exports.approveOrder = approveOrder;

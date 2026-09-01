@@ -6,10 +6,23 @@ const { userCan } = require('../utils/permissions');
 const { businessDay } = require('../utils/businessDay');
 const { placeFor } = require('../utils/geocode');
 const { moveStock, notify, usersWithGrant, usersWhoCan, nextDocNumber } = require('../utils/workflow');
+const { approveOrder } = require('./workflow');
 const {
   rateFor, commissionFor, qualifyingValue, isBelowCost,
   assertSchemeCommissionExclusive, requiredWindow, isCustomerType, label,
 } = require('../utils/pricing');
+
+// 4.2, September 2026 — "Order value above threshold ... route for approval."
+// No figure is given, so this is a business decision left to Yash the same
+// way GST%, HSN and salaries were: a placeholder would be invented data
+// wearing the shape of a real number. Set ORDER_APPROVAL_VALUE_THRESHOLD in
+// .env once a real figure is chosen; until then every order clears this leg
+// of the check (0 or unset disables it, rather than blocking every order on
+// an invented default).
+const APPROVAL_VALUE_THRESHOLD = Number(process.env.ORDER_APPROVAL_VALUE_THRESHOLD) || 0;
+// "quantity > 3x this party's normal for that SKU" — the multiplier itself
+// is the one number the sheet actually states.
+const APPROVAL_QTY_MULTIPLE = 3;
 
 router.use(authenticate);
 
@@ -519,6 +532,51 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         }
       }
 
+      // ---- 4.2 "App checks at punch" — CHANGED FROM v1 --------------------
+      // v1 required Manas to approve every single order before it could be
+      // picked. That step is gone; these are the checks it was quietly also
+      // doing, moved to fire automatically at punch instead — credit and
+      // overdue block outright (above), everything else here either routes
+      // the order to the same approval queue Manas always had, or skips it
+      // straight to picking. About 95% of orders are expected to skip it.
+      const routingReasons = [];
+
+      // "New party, never billed before."
+      const [[priorOrders]] = await conn.query(
+        `SELECT COUNT(*) AS n FROM orders
+          WHERE customer_id = ? AND is_no_order = FALSE AND status NOT IN ('rejected', 'cancelled')`,
+        [customer_id],
+      );
+      if (Number(priorOrders.n) === 0) routingReasons.push('new party — never billed before');
+
+      // "Order value above threshold."
+      if (APPROVAL_VALUE_THRESHOLD > 0 && grandTotal > APPROVAL_VALUE_THRESHOLD) {
+        routingReasons.push(`order value ₹${grandTotal.toFixed(2)} is above the ₹${APPROVAL_VALUE_THRESHOLD.toFixed(2)} threshold`);
+      }
+
+      // "...or quantity > 3x this party's normal for that SKU." Compared
+      // against this party's own history on that item; an item they have
+      // never bought before has no "normal" to be anomalous against, so it
+      // is silently skipped rather than flagged on every first purchase.
+      for (const line of processedItems) {
+        // This order is not written yet at this point in the transaction —
+        // there is nothing of "this order's" to exclude — so the average is
+        // over every PRIOR order only, which is exactly the history the
+        // current line should be judged an anomaly against.
+        const [[history]] = await conn.query(
+          `SELECT AVG(qty) AS avg_qty FROM order_items oi
+             JOIN orders o ON o.order_id = oi.order_id
+            WHERE o.customer_id = ? AND oi.item_id = ?
+              AND o.status NOT IN ('rejected', 'cancelled')`,
+          [customer_id, line.item_id],
+        );
+        const avgQty = Number(history.avg_qty);
+        if (avgQty > 0 && line.qty > avgQty * APPROVAL_QTY_MULTIPLE) {
+          routingReasons.push(
+            `${line.item_name}: ${line.qty} is more than ${APPROVAL_QTY_MULTIPLE}x their usual ${avgQty.toFixed(1)}`);
+        }
+      }
+
       // ---- the place name (D.2) -------------------------------------------
       // "Name of the location or nearest landmark (reverse geocoded from
       // coordinates)". A server-side geocode is stronger evidence than a string
@@ -533,9 +591,13 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
         lat: gps?.lat, lng: gps?.lng, clientPlace: gps?.place });
 
       // ---- write ----------------------------------------------------------
-      // 'confirmed' when the creator may confirm, 'pending' otherwise. Both
-      // mean "not yet approved" — R-01 still requires Manas.
-      const orderStatus = userCan(req.user, 'orders.confirm') ? 'confirmed' : 'pending';
+      // Written 'pending' either way; if nothing tripped `routingReasons` it
+      // is auto-approved a few lines below, in the same transaction, through
+      // the exact same path a manual Manas approval takes (Tally push,
+      // picking notified). Starting anything other than 'pending' here would
+      // need its own order_events row explaining how it got there — 'pending'
+      // needs none, so the extra step is cheaper than the alternative.
+      const orderStatus = 'pending';
       const soNumber = await nextDocNumber(conn, {
         table: 'orders', column: 'so_number', prefix: 'SO-', width: 5,
       });
@@ -543,14 +605,15 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       const [orderResult] = await conn.query(
         `INSERT INTO orders (so_number, customer_id, customer_type, order_date, total_amount,
                              created_by, salesman_id, agent_id, agent_commission,
-                             scheme_member_id, scheme_qualifying, status, notes,
+                             scheme_member_id, scheme_qualifying, status, approval_reason, notes,
                              delivered_to, delivery_mode, urgency, special_instructions,
                              payment_mode, gps_lat, gps_lng, gps_place, gps_place_source,
                              duplicate_ack, order_photo_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [soNumber, customer_id, customerType, order_date, grandTotal,
           req.user.id, salesmanId, agent_id, commissionTotal,
-          scheme_member_id, qualifyingTotal, orderStatus, notes,
+          scheme_member_id, qualifyingTotal, orderStatus,
+          routingReasons.length ? routingReasons.join('; ') : null, notes,
           String(delivered_to).trim(), delivery_mode, urgency, special_instructions,
           payment_mode, gps?.lat ?? null, gps?.lng ?? null,
           located.place, located.source,
@@ -613,17 +676,41 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       }
 
       // ---- notifications --------------------------------------------------
-      // R-01: Manas is told about every order, immediately.
+      // R-01: Manas is told about every order, immediately — that stands
+      // regardless of whether it needs his decision. 4.2 only changes
+      // whether one of these needs ACTION; visibility into all of them is
+      // unchanged, so the tone and title say which kind this one is.
       for (const approver of await usersWhoCan(conn, 'orders.approve')) {
         await notify(conn, {
           userId: approver,
-          tone: 'info',
-          title: `New order ${soNumber}`,
-          body: `${customer.name} — ${grandTotal.toFixed(2)}, raised by ${req.user.name}.`,
+          tone: routingReasons.length ? 'warning' : 'info',
+          title: routingReasons.length ? `Needs approval — ${soNumber}` : `New order ${soNumber}`,
+          body: routingReasons.length
+            ? `${customer.name} — ${grandTotal.toFixed(2)}. ${routingReasons.join('; ')}.`
+            : `${customer.name} — ${grandTotal.toFixed(2)}, raised by ${req.user.name}.`,
           actor: req.user.id,
           refType: 'order',
           refId: orderId,
         });
+      }
+
+      // 4.2 — "Everything else — about 95% of orders — straight to picking.
+      // No approval, no human gate." Nothing in `routingReasons` means this
+      // order clears every punch-time check, so it is approved right here,
+      // in this same transaction, through the identical path a manual Manas
+      // approval takes (Tally push, picking notified) — see
+      // routes/workflow.js's `approveOrder`. Anything that DID trip a
+      // condition is left 'pending', exactly as every order used to be.
+      let finalStatus = orderStatus;
+      if (!routingReasons.length) {
+        const autoApproval = await approveOrder(conn, {
+          orderId, userId: req.user.id, userName: req.user.name,
+          note: 'Auto-approved at punch — no exception conditions (4.2).',
+        });
+        if (autoApproval.ok) finalStatus = 'approved';
+        // An unexpected failure here (the order was just created 'pending',
+        // so this should never be illegal) leaves it pending rather than
+        // failing the whole punch — a human can still approve it by hand.
       }
 
       // R-16: below cost is a notification to Yash, never a block.
@@ -666,9 +753,13 @@ router.post('/', requirePermission('orders.create'), async (req, res, next) => {
       await conn.commit();
 
       res.status(201).json({
-        message: 'Order created successfully',
+        message: finalStatus === 'approved'
+          ? 'Order approved and sent to picking.'
+          : `Sent for approval — ${routingReasons.join('; ')}.`,
         order_id: orderId,
         so_number: soNumber,
+        status: finalStatus,
+        approval_reasons: routingReasons.length ? routingReasons : null,
         total_amount: grandTotal,
         customer_type: customerType,
         agent_commission: commissionTotal,

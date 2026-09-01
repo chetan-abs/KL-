@@ -903,6 +903,7 @@ CREATE TABLE IF NOT EXISTS orders (
   scheme_member_id int DEFAULT NULL,
   scheme_qualifying decimal(15,2) NOT NULL DEFAULT '0.00',
   status enum('pending','confirmed','completed','cancelled','approved','rejected','picking','picked','verified','invoiced','dispatched','delivered','undelivered') DEFAULT 'pending',
+  approval_reason varchar(500) DEFAULT NULL,
   is_no_order tinyint(1) NOT NULL DEFAULT '0',
   notes text,
   delivered_to varchar(100) DEFAULT NULL,
@@ -2233,4 +2234,5 @@ INSERT IGNORE INTO schema_migrations (filename) VALUES
   ('015_force_password_change.sql'),
   ('016_password_change_requests.sql'),
   ('017_user_title.sql'),
-  ('018_rate_tiers_credit_block.sql');
+  ('018_rate_tiers_credit_block.sql'),
+  ('019_approval_routing_reason.sql');

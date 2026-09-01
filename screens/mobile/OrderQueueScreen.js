@@ -17,8 +17,16 @@ import NoticeBar from '../../components/mobile/NoticeBar';
 import AsyncBoundary from '../../components/mobile/AsyncBoundary';
 
 /**
- * 02 — Manas order queue. Every order routes through here; approval is
- * mandatory (R01).
+ * 02 — Manas order queue.
+ *
+ * CHANGED FROM v1 (4.2, September 2026): most orders no longer route through
+ * here at all — they clear a set of automatic checks at punch (credit,
+ * overdue, a new party, an unusually large order or line quantity) and go
+ * straight to picking. What lands in this queue is specifically the
+ * exception: an order the server itself flagged as needing a human look,
+ * with the reason on the row. R-01's notification still fires on every
+ * order regardless, so nothing here narrows what Manas is TOLD — only what
+ * he has to ACT on.
  *
  * The meta line is one string — amount, party type, salesman, age — because on a
  * 360pt screen those four facts compete for the same row, and stacking them
@@ -137,10 +145,17 @@ export default function OrderQueueScreen({ role, nav, onOpenOrder }) {
                       .filter(Boolean)
                       .join(' · ')}
                   </AppText>
+                  {/* 4.2 — why the automatic checks sent this one here,
+                      rather than straight to picking like the other ~95%. */}
+                  {order.approval_reason ? (
+                    <AppText size="xs" color={COLORS.warning} style={styles.meta} numberOfLines={1}>
+                      {order.approval_reason}
+                    </AppText>
+                  ) : null}
                 </View>
 
                 <View style={styles.marks}>
-                  <Badge tone="pending">New</Badge>
+                  <Badge tone="pending">{order.approval_reason ? 'Review' : 'New'}</Badge>
                   {late ? (
                     <Badge tone="danger" style={styles.flag}>
                       {`${order.outstanding_days}d due ⚠`}

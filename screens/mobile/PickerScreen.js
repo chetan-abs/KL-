@@ -105,11 +105,15 @@ export default function PickerScreen({ role, orderId, party, onBack, onHandover,
     },
     {
       onDone: (result) => {
+        // 4.2 — verification is exception-based now: most picks clear
+        // straight to billing without anybody counting them again.
         showAlert(
-          'Handed over',
-          result?.short_lines
-            ? `Sent to Ajit with ${result.short_lines} line(s) short of the SO.`
-            : 'Sent to Ajit for verification.'
+          result?.status === 'verified' ? 'Auto-verified' : 'Handed over',
+          result?.status === 'verified'
+            ? 'Picked in full — verified automatically and sent to billing.'
+            : result?.short_lines
+              ? `Sent to Sonu with ${result.short_lines} line(s) short of the SO.`
+              : `Sent to Sonu for verification — ${(result?.exception_reasons || []).join('; ') || 'flagged for a count'}.`
         );
         onHandover?.();
       },
@@ -121,7 +125,7 @@ export default function PickerScreen({ role, orderId, party, onBack, onHandover,
     if (short) {
       confirmAction(
         'Hand over short?',
-        `${short} line(s) are short of the SO. Ajit's count will flag the difference to Yash.`,
+        `${short} line(s) are short of the SO. A short pick is always counted by Sonu, and the difference is flagged to Yash.`,
         handover.run
       );
       return;
